@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>University Notes Platform</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Mobile-friendly Sidebar -->
+    <nav id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <span class="logo">📘 UniNotes</span>
+            <button id="sidebar-toggle">☰</button>
+        </div>
+        <ul class="nav-list">
+            <li class="nav-item" onclick="showDashboard('overview')">📊 Dashboard</li>
+            <li class="nav-item" onclick="showDashboard('allBranches')">📚 Browse</li>
+            <li class="nav-item" onclick="showDashboard('search')">🔍 Search</li>
+            <li class="nav-item" onclick="showDashboard('myUploads')">📤 My Uploads</li>
+            <li class="nav-item danger" onclick="logout()">🚪 Logout</li>
+        </ul>
+    </nav>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+        <header>
+            <button id="mobile-menu-btn">☰</button>
+            <span id="header-title">University Notes</span>
+            <span id="user-bar"></span>
+        </header>
+        
+        <!-- Modals -->
+        <div id="modal-bg" class="modal-bg"></div>
+        <div id="auth-modal" class="modal-content small"></div>
+        <div id="preview-modal" class="modal-content"></div>
+        <div id="admin-modal" class="modal-content small"></div>
+        
+        <!-- Dashboard Sections -->
+        <main id="dashboard-main">
+            <!-- Overview Section -->
+            <section id="overview" class="dashboard-section active">
+                <h2>Dashboard Overview</h2>
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <h4>Total Uploads</h4>
+                        <div id="totalDocs">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h4>This Month</h4>
+                        <div id="monthlyUploads">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Today</h4>
+                        <div id="todayUploads">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h4>My Uploads</h4>
+                        <div id="myUploadsCount">0</div>
+                    </div>
+                </div>
+                <h3>Recent Activity</h3>
+                <ul id="activity-log" class="activity-list"></ul>
+            </section>
+            
+            <!-- Other Sections (populated by JavaScript) -->
+            <section id="allBranches" class="dashboard-section"></section>
+            <section id="branchDetail" class="dashboard-section"></section>
+            <section id="semesterDetail" class="dashboard-section"></section>
+            <section id="sectionDetail" class="dashboard-section"></section>
+            <section id="subjectDetail" class="dashboard-section"></section>
+            
+            <!-- Search Section -->
+            <section id="search" class="dashboard-section">
+                <h2>Search Documents</h2>
+                <input id="searchInput" class="search-box" placeholder="Search subjects or documents..." autocomplete="off">
+                <div id="subjectResults" class="search-suggest"></div>
+                <div id="searchResults"></div>
+            </section>
+            
+            <!-- My Uploads Section -->
+            <section id="myUploads" class="dashboard-section"></section>
+        </main>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabaseClient.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
