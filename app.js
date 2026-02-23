@@ -1,11 +1,5 @@
-// ============================================
-// COMPLETE APP.JS - University Notes Platform
-// Mobile-friendly, Modals, File Preview, Analytics
-// ============================================
+const ADMIN_CODE = "sahil12345"; 
 
-const ADMIN_CODE = "sahil12345"; // Change this to your secret admin code
-
-// Global state
 let currentUser = null;
 let currentBranch = null;
 let currentSemester = null;
@@ -27,6 +21,10 @@ function toggleSidebar() {
 window.onclick = e => {
     if (e.target.classList.contains('modal-bg')) hideModal();
 };
+
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') hideModal();
+});
 
 // MODAL SYSTEM
 function showModal(html, which = "#auth-modal") {
@@ -84,7 +82,22 @@ window.showAuthModal = showAuthModal;
 function setUserInfo(user) {
     currentUser = user;
     const userBar = document.getElementById('user-bar');
-    if (userBar) userBar.textContent = user ? ("👤 " + user.email) : '';
+    if (userBar) userBar.textContent = user ? ("👤 " + user.email) : 'Not logged in';
+
+    const navItems = document.querySelectorAll('.nav-item');
+    navItems.forEach(item => {
+        if (item.textContent.includes('Logout') || item.textContent.includes('Login')) {
+            if (user) {
+                item.innerHTML = '🚪 Logout';
+                item.onclick = logout;
+                item.classList.add('danger');
+            } else {
+                item.innerHTML = '🔑 Login';
+                item.onclick = () => showAuthModal('login');
+                item.classList.remove('danger');
+            }
+        }
+    });
 }
 
 async function doSignup(event) {
@@ -110,15 +123,11 @@ async function doLogin(event) {
 async function logout() {
     await supabase.auth.signOut();
     setUserInfo(null);
-    
-    // Hide all dashboard sections so data isn't visible behind the login screen
     document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
-    
     showAuthModal('login');
 }
 window.logout = logout;
 
-// Initialize auth on page load
 supabase.auth.getSession().then(({ data: { session } }) => {
     setUserInfo(session?.user || null);
     if (!session?.user) {
@@ -137,7 +146,6 @@ function showDashboard(section) {
     const headerTitle = document.getElementById('header-title');
     if (headerTitle) headerTitle.textContent = section.charAt(0).toUpperCase() + section.slice(1);
     
-    // Load dynamic content
     if (section === 'overview') updateDashboardStats();
     if (section === 'allBranches') listBranches();
     if (section === 'search') setupSearch();
@@ -147,7 +155,6 @@ window.showDashboard = showDashboard;
 
 // DASHBOARD ANALYTICS
 async function updateDashboardStats() {
-    // Get ALL documents globally
     const { count: total } = await supabase.from("documents").select("*", { count: "exact", head: true });
     document.getElementById("totalDocs").innerText = total || 0;
     
@@ -159,7 +166,6 @@ async function updateDashboardStats() {
     const { count: todayCount } = await supabase.from("documents").select("*", { count: "exact", head: true }).gte('created_at', today.toISOString());
     document.getElementById("todayUploads").innerText = todayCount || 0;
     
-    // Get ONLY user's documents
     if (currentUser) {
         const { count: mine } = await supabase.from("documents").select("*", { count: "exact", head: true }).eq("uploaded_by", currentUser.id);
         document.getElementById("myUploadsCount").innerText = mine || 0;
@@ -363,7 +369,6 @@ async function loadDocuments(subjectId) {
         return;
     }
     
-    // Added explicit download button using standard <a> tag
     list.innerHTML = data.map(d => `
         <div class="branch-card">
             <h4>${d.title}</h4>
@@ -423,7 +428,6 @@ async function searchContent() {
     const { data: documents } = await supabase.from('documents').select('*, subjects(name)').or(`title.ilike.%${query}%,description.ilike.%${query}%`);
     let docsHtml = '<strong>Matching Documents:</strong><br/>';
     if (documents && documents.length > 0) {
-        // Added explicit download button
         docsHtml += documents.map(d => `
             <div class="branch-card">
                 <h4>${d.title}</h4>
@@ -452,7 +456,6 @@ async function myUploads() {
         return;
     }
     
-    // Added explicit download button here as well
     list.innerHTML = '<h2>My Uploads</h2>' + data.map(d => `
         <div class="branch-card">
             <h4>📄 ${d.title}</h4>
@@ -464,7 +467,3 @@ async function myUploads() {
         </div>
     `).join('');
 }
-
-window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') hideModal();
-});
