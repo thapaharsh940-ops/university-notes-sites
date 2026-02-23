@@ -18,10 +18,12 @@ const mobileBtn = document.getElementById('mobile-menu-btn');
 const sidebarToggle = document.getElementById('sidebar-toggle');
 if (mobileBtn) mobileBtn.onclick = toggleSidebar;
 if (sidebarToggle) sidebarToggle.onclick = toggleSidebar;
+
 function toggleSidebar() {
     sidebar.classList.toggle("open");
     sidebar.classList.toggle("closed");
 }
+
 window.onclick = e => {
     if (e.target.classList.contains('modal-bg')) hideModal();
 };
@@ -32,10 +34,12 @@ function showModal(html, which = "#auth-modal") {
     document.querySelector(which).innerHTML = html;
     document.querySelector(which).classList.add('active');
 }
+
 function hideModal() {
     document.getElementById('modal-bg').classList.remove('active');
     document.querySelectorAll('.modal-content').forEach(m => m.classList.remove('active'));
 }
+
 function requireAdmin(action) {
     showModal(`
     <div>
@@ -45,6 +49,7 @@ function requireAdmin(action) {
         <button onclick="hideModal()" class="btn-delete">Cancel</button>
     </div>`, "#admin-modal");
 }
+
 function checkAdminAndProceed(action) {
     const val = document.getElementById('admin-code-input').value;
     if (val !== ADMIN_CODE) {
@@ -54,10 +59,10 @@ function checkAdminAndProceed(action) {
     hideModal();
     if (typeof window[action] === "function") window[action]();
 }
+
 function showAuthModal(tab = 'login') {
     showModal(`
       <div style="text-align:center">
-      <button onclick="hideModal()" style="float:right; border:none; background:transparent; font-size:1.5em; cursor:pointer">×</button>
       <h2>${tab === 'login' ? "Login" : "Sign Up"}</h2>
       <form onsubmit="${tab === 'login' ? 'doLogin(event)' : 'doSignup(event)'}">
         <input id="auth-email" type="email" placeholder="Email" required><br>
@@ -92,6 +97,7 @@ async function doSignup(event) {
     if (error) alert("Signup error: " + error.message);
     else { alert("✅ Check your email for verification!"); hideModal(); }
 }
+
 async function doLogin(event) {
     event.preventDefault();
     const email = document.getElementById('auth-email').value;
@@ -100,9 +106,14 @@ async function doLogin(event) {
     if (error) alert("Login failed: " + error.message);
     else { setUserInfo(data.user); hideModal(); showDashboard('overview'); }
 }
+
 async function logout() {
     await supabase.auth.signOut();
     setUserInfo(null);
+    
+    // Hide all dashboard sections so data isn't visible behind the login screen
+    document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
+    
     showAuthModal('login');
 }
 window.logout = logout;
@@ -110,8 +121,13 @@ window.logout = logout;
 // Initialize auth on page load
 supabase.auth.getSession().then(({ data: { session } }) => {
     setUserInfo(session?.user || null);
-    if (!session?.user) showAuthModal('login');
+    if (!session?.user) {
+        showAuthModal('login');
+    } else {
+        showDashboard('overview');
+    }
 });
+
 supabase.auth.onAuthStateChange((event, session) => setUserInfo(session?.user || null));
 
 // DASHBOARD NAVIGATION
@@ -120,6 +136,7 @@ function showDashboard(section) {
     document.getElementById(section).classList.add('active');
     const headerTitle = document.getElementById('header-title');
     if (headerTitle) headerTitle.textContent = section.charAt(0).toUpperCase() + section.slice(1);
+    
     // Load dynamic content
     if (section === 'overview') updateDashboardStats();
     if (section === 'allBranches') listBranches();
@@ -130,20 +147,26 @@ window.showDashboard = showDashboard;
 
 // DASHBOARD ANALYTICS
 async function updateDashboardStats() {
+    // Get ALL documents globally
     const { count: total } = await supabase.from("documents").select("*", { count: "exact", head: true });
     document.getElementById("totalDocs").innerText = total || 0;
+    
     const today = new Date(), fdm = new Date(today.getFullYear(), today.getMonth(), 1);
     const { count: monthly } = await supabase.from("documents").select("*", { count: "exact", head: true }).gte('created_at', fdm.toISOString());
     document.getElementById("monthlyUploads").innerText = monthly || 0;
+    
     today.setHours(0, 0, 0, 0);
     const { count: todayCount } = await supabase.from("documents").select("*", { count: "exact", head: true }).gte('created_at', today.toISOString());
     document.getElementById("todayUploads").innerText = todayCount || 0;
+    
+    // Get ONLY user's documents
     if (currentUser) {
         const { count: mine } = await supabase.from("documents").select("*", { count: "exact", head: true }).eq("uploaded_by", currentUser.id);
         document.getElementById("myUploadsCount").innerText = mine || 0;
     }
+    
     const { data: recent } = await supabase.from("documents").select("title,created_at").order("created_at", { ascending: false }).limit(10);
-    const log = recent ? recent.map(x => `<li>${x.title} <small>(${new Date(x.created_at).toLocaleString()})</small></li>`).join('') : '<li>No recent activity</li>';
+    const log = recent && recent.length > 0 ? recent.map(x => `<li>${x.title} <small>(${new Date(x.created_at).toLocaleString()})</small></li>`).join('') : '<li>No recent activity</li>';
     document.getElementById("activity-log").innerHTML = log;
 }
 
@@ -331,6 +354,7 @@ window.uploadDocument = async function(e) {
         alert("Upload failed: " + err.message);
     }
 };
+
 async function loadDocuments(subjectId) {
     const { data } = await supabase.from('documents').select('*').eq('subject_id', subjectId).order('created_at', {ascending: false});
     const list = document.getElementById('documentList');
@@ -338,13 +362,16 @@ async function loadDocuments(subjectId) {
         list.innerHTML = "<p>No documents uploaded.</p>";
         return;
     }
+    
+    // Added explicit download button using standard <a> tag
     list.innerHTML = data.map(d => `
         <div class="branch-card">
             <h4>${d.title}</h4>
             <p>${d.description || ""}</p>
             <p><small>${(d.file_size/1024/1024).toFixed(2)} MB | ${d.file_type}</small></p>
-            <button onclick="previewFile('${d.file_url}', '${d.file_type}')" class="btn-primary">Preview / Download</button>
-            <button onclick="requireAdmin('delDocument_${d.id}')" class="btn-delete">Delete</button>
+            <button onclick="previewFile('${d.file_url}', '${d.file_type}')" class="btn-primary">👁️ Preview</button>
+            <a href="${d.file_url}" target="_blank" download class="btn-primary" style="text-decoration:none; display:inline-block;">📥 Download</a>
+            <button onclick="requireAdmin('delDocument_${d.id}')" class="btn-delete">🗑️ Delete</button>
         </div>
     `).join('');
 }
@@ -358,13 +385,13 @@ window.delDocument = async function(id) {
 function previewFile(url, type) {
     let contentHtml = '<button onclick="hideModal()" style="float:right; border:none; background:transparent; font-size:1.5em; cursor:pointer">×</button>';
     if (type.startsWith('image/')) {
-        contentHtml += `<img src="${url}" alt="Image Preview" class="preview-image"/>`;
+        contentHtml += `<img src="${url}" alt="Image Preview" class="preview-image" style="max-width:100%;"/>`;
     } else if (type === 'application/pdf') {
-        contentHtml += `<embed src="${url}" type="application/pdf" class="preview-pdf" />`;
+        contentHtml += `<embed src="${url}" type="application/pdf" class="preview-pdf" style="width:100%; height:80vh;" />`;
     } else if (type.startsWith('video/')) {
-        contentHtml += `<video src="${url}" controls class="preview-video"></video>`;
+        contentHtml += `<video src="${url}" controls class="preview-video" style="max-width:100%;"></video>`;
     } else {
-        contentHtml += `<p>Preview not available for this file type.</p><a href="${url}" target="_blank" class="btn-primary">Download File</a>`;
+        contentHtml += `<p>Preview not available for this file type.</p><a href="${url}" target="_blank" download class="btn-primary" style="text-decoration:none;">📥 Download File</a>`;
     }
     showModal(contentHtml, '#preview-modal');
 }
@@ -375,6 +402,10 @@ function setupSearch() {
     document.getElementById('subjectResults').innerHTML = '';
     document.getElementById('searchResults').innerHTML = '';
 }
+document.getElementById('searchInput')?.addEventListener('keyup', (e) => {
+    if(e.key === 'Enter') searchContent();
+});
+
 async function searchContent() {
     const query = document.getElementById('searchInput').value.trim();
     if (!query) return alert("Please enter a search term.");
@@ -382,21 +413,24 @@ async function searchContent() {
     let subjectHtml = '<strong>Matching Subjects:</strong><br/>';
     if (subjects && subjects.length > 0) {
         subjectHtml += subjects.map(s =>
-            `<p class="search-subject" onclick="showSubject('${s.id}')">${s.name}</p>`
+            `<p class="search-subject link" onclick="showSubject('${s.id}')">${s.name}</p>`
         ).join('');
     } else {
         subjectHtml += '<p>No matching subjects.</p>';
     }
     document.getElementById('subjectResults').innerHTML = subjectHtml;
+    
     const { data: documents } = await supabase.from('documents').select('*, subjects(name)').or(`title.ilike.%${query}%,description.ilike.%${query}%`);
     let docsHtml = '<strong>Matching Documents:</strong><br/>';
     if (documents && documents.length > 0) {
+        // Added explicit download button
         docsHtml += documents.map(d => `
             <div class="branch-card">
                 <h4>${d.title}</h4>
                 <p>${d.description || ''}</p>
                 <p><small>Subject: ${d.subjects?.name || 'Unknown'}</small></p>
-                <button onclick="previewFile('${d.file_url}', '${d.file_type}')" class="btn-primary">Preview / Download</button>
+                <button onclick="previewFile('${d.file_url}', '${d.file_type}')" class="btn-primary">👁️ Preview</button>
+                <a href="${d.file_url}" target="_blank" download class="btn-primary" style="text-decoration:none; display:inline-block;">📥 Download</a>
             </div>
         `).join('');
     } else {
@@ -417,12 +451,15 @@ async function myUploads() {
         list.innerHTML = '<h2>My Uploads</h2><p>You haven\'t uploaded any documents yet.</p>';
         return;
     }
+    
+    // Added explicit download button here as well
     list.innerHTML = '<h2>My Uploads</h2>' + data.map(d => `
         <div class="branch-card">
             <h4>📄 ${d.title}</h4>
             <p>${d.description || ""}</p>
             <p><small>Subject: ${d.subjects?.name || 'Unknown'} | ${(d.file_size / 1024 / 1024).toFixed(2)} MB</small></p>
             <button onclick="previewFile('${d.file_url}', '${d.file_type}')" class="btn-primary">👁️ Preview</button>
+            <a href="${d.file_url}" target="_blank" download class="btn-primary" style="text-decoration:none; display:inline-block;">📥 Download</a>
             <button onclick="requireAdmin('delDocument_${d.id}')" class="btn-delete">🗑️ Delete</button>
         </div>
     `).join('');
@@ -430,8 +467,4 @@ async function myUploads() {
 
 window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') hideModal();
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-    // complete
 });
