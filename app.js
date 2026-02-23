@@ -1,4 +1,4 @@
-const ADMIN_CODE = "sahil12345"; //sahil jinda badh
+const ADMIN_CODE = "sahil12345"; 
 
 let currentUser = null;
 let currentBranch = null;
@@ -123,18 +123,16 @@ async function doLogin(event) {
 async function logout() {
     await supabase.auth.signOut();
     setUserInfo(null);
-    document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
-    showAuthModal('login');
+    // When logging out, just refresh the dashboard view instead of hiding it!
+    showDashboard('overview');
 }
 window.logout = logout;
 
+// Initialize auth on page load
 supabase.auth.getSession().then(({ data: { session } }) => {
     setUserInfo(session?.user || null);
-    if (!session?.user) {
-        showAuthModal('login');
-    } else {
-        showDashboard('overview');
-    }
+    // ALWAYS show the dashboard on load, whether logged in or not!
+    showDashboard('overview');
 });
 
 supabase.auth.onAuthStateChange((event, session) => setUserInfo(session?.user || null));
@@ -155,6 +153,7 @@ window.showDashboard = showDashboard;
 
 // DASHBOARD ANALYTICS
 async function updateDashboardStats() {
+    // Get ALL documents globally (This will work even if not logged in, IF your database allows it)
     const { count: total } = await supabase.from("documents").select("*", { count: "exact", head: true });
     document.getElementById("totalDocs").innerText = total || 0;
     
@@ -167,8 +166,12 @@ async function updateDashboardStats() {
     document.getElementById("todayUploads").innerText = todayCount || 0;
     
     if (currentUser) {
+        // Logged in: count their specific uploads
         const { count: mine } = await supabase.from("documents").select("*", { count: "exact", head: true }).eq("uploaded_by", currentUser.id);
         document.getElementById("myUploadsCount").innerText = mine || 0;
+    } else {
+        // Logged out: make sure it says 0
+        document.getElementById("myUploadsCount").innerText = 0; 
     }
     
     const { data: recent } = await supabase.from("documents").select("title,created_at").order("created_at", { ascending: false }).limit(10);
