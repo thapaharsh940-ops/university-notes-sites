@@ -17,7 +17,7 @@
             <li class="nav-item" onclick="showDashboard('allBranches')">📚 Browse</li>
             <li class="nav-item" onclick="showDashboard('search')">🔍 Search</li>
             <li class="nav-item" onclick="showDashboard('myUploads')">📤 My Uploads</li>
-            <li class="nav-item danger" onclick="logout()">🚪 Logout</li>
+            <li class="nav-item" onclick="showDashboard('savedNotes')">🔖 Saved Notes</li> <li class="nav-item danger" onclick="logout()">🚪 Logout</li>
         </ul>
     </nav>
 
@@ -36,15 +36,31 @@
         <main id="dashboard-main">
             <section id="overview" class="dashboard-section active">
                 <h2>Dashboard Overview</h2>
+                
+                <div id="recent-views-container" style="display:none; margin-bottom: 2em;">
+                    <h3>🕒 Recently Viewed</h3>
+                    <div id="recentViews" class="stats-row"></div>
+                </div>
+
                 <div class="stats-row">
                     <div class="stat-card"><h4>Total Docs</h4><div id="totalDocs">0</div></div>
                     <div class="stat-card"><h4>Monthly</h4><div id="monthlyUploads">0</div></div>
                     <div class="stat-card"><h4>Today</h4><div id="todayUploads">0</div></div>
                     <div class="stat-card"><h4>My Uploads</h4><div id="myUploadsCount">0</div></div>
                 </div>
-                <h3>Recent Activity</h3>
-                <ul id="activity-log" class="activity-list"></ul>
+
+                <div style="display: flex; gap: 2em; flex-wrap: wrap; margin-top: 2em;">
+                    <div style="flex: 1; min-width: 300px;">
+                        <h3>Activity Log</h3>
+                        <ul id="activity-log" class="activity-list"></ul>
+                    </div>
+                    <div style="flex: 1; min-width: 300px;">
+                        <h3>🏆 Top Contributors</h3>
+                        <ul id="leaderboard-list" class="activity-list"></ul>
+                    </div>
+                </div>
             </section>
+            
             <section id="allBranches" class="dashboard-section"></section>
             <section id="branchDetail" class="dashboard-section"></section>
             <section id="semesterDetail" class="dashboard-section"></section>
@@ -57,6 +73,11 @@
                 <div id="searchResults"></div>
             </section>
             <section id="myUploads" class="dashboard-section"></section>
+            
+            <section id="savedNotes" class="dashboard-section">
+                <h2>🔖 Saved Notes</h2>
+                <div id="savedNotesList"></div>
+            </section>
         </main>
     </div>
 
