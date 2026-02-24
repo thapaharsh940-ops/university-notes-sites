@@ -1,4 +1,4 @@
-const ADMIN_CODE = "sahil12345"; 
+const ADMIN_CODE = "sahil123456"; 
 
 let currentUser = null;
 let currentBranch = null; let currentSemester = null;
