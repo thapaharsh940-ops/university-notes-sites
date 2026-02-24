@@ -102,3 +102,11 @@ textarea { min-height: 100px; resize: vertical; }
     .dashboard-section { padding: 1rem; }
     .stats-row { flex-direction: column;}
 }
+/* NEW FEATURES STYLING */
+.comment-section { margin-top: 1.5em; border-top: 2px solid #e2e8f0; padding-top: 1em; }
+.comment-box { background: #f7f9fc; padding: 0.8em; border-radius: 6px; margin-bottom: 0.5em; font-size: 0.9em; }
+.comment-author { font-weight: bold; color: #4299e1; margin-bottom: 0.2em; }
+.btn-action { background: none; border: 1px solid #cbd5e0; padding: 0.5em 1em; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 0.9em; }
+.btn-action:hover { background: #edf2f7; }
+.btn-action.active-upvote { background: #48bb78; color: white; border-color: #48bb78; }
+.btn-action.active-bookmark { background: #ecc94b; color: #744210; border-color: #ecc94b; }
