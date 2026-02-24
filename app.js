@@ -4,7 +4,9 @@ let currentUser = null;
 let currentBranch = null; let currentSemester = null;
 let currentSection = null; let currentSubject = null;
 
-// --- UI SETUP ---
+// ==========================================
+// 1. UI & MODAL SETUP
+// ==========================================
 const sidebar = document.getElementById('sidebar');
 const mobileBtn = document.getElementById('mobile-menu-btn');
 const sidebarToggle = document.getElementById('sidebar-toggle');
@@ -30,7 +32,9 @@ function hideModal() {
     document.querySelectorAll('.modal-content').forEach(m => m.classList.remove('active'));
 }
 
-// --- AUTH ---
+// ==========================================
+// 2. AUTHENTICATION
+// ==========================================
 function showAuthModal(tab = 'login') {
     showModal(`
       <div style="text-align:center">
@@ -67,12 +71,14 @@ async function doSignup(e) {
     let { error } = await supabase.auth.signUp({ email, password: pass });
     if (error) alert("Signup error: " + error.message); else { alert("✅ Check email to verify!"); hideModal(); }
 }
+
 async function doLogin(e) {
     e.preventDefault();
     const email = document.getElementById('auth-email').value, pass = document.getElementById('auth-pass').value;
     let { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
     if (error) alert("Login failed: " + error.message); else { setUserInfo(data.user); hideModal(); showDashboard('overview'); }
 }
+
 async function logout() { await supabase.auth.signOut(); setUserInfo(null); showDashboard('overview'); }
 
 supabase.auth.getSession().then(({ data: { session } }) => {
@@ -80,7 +86,9 @@ supabase.auth.getSession().then(({ data: { session } }) => {
     showDashboard('overview');
 });
 
-// --- NAVIGATION ---
+// ==========================================
+// 3. NAVIGATION & DASHBOARD STATS
+// ==========================================
 function showDashboard(section) {
     document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
     document.getElementById(section).classList.add('active');
@@ -92,23 +100,28 @@ function showDashboard(section) {
 }
 window.showDashboard = showDashboard;
 
-// --- FEATURE: LEADERBOARD & STATS ---
 async function updateDashboardStats() {
     const { count: total } = await supabase.from("documents").select("*", { count: "exact", head: true });
-    document.getElementById("totalDocs").innerText = total || 0;
+    const totalDocsEl = document.getElementById("totalDocs");
+    if (totalDocsEl) totalDocsEl.innerText = total || 0;
     
     const { data: docs } = await supabase.from("documents").select("uploader_email");
     if(docs) {
         let counts = {};
         docs.forEach(d => { if(d.uploader_email) counts[d.uploader_email] = (counts[d.uploader_email] || 0) + 1; });
         let sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 5);
-        document.getElementById("leaderboard-list").innerHTML = sorted.length > 0 ? 
-            sorted.map((user, i) => `<li><b>#${i+1}</b> ${user[0].split('@')[0]} <span style="float:right">📄 ${user[1]}</span></li>`).join('') 
-            : '<li>No contributors yet.</li>';
+        const leaderboard = document.getElementById("leaderboard-list");
+        if (leaderboard) {
+            leaderboard.innerHTML = sorted.length > 0 ? 
+                sorted.map((user, i) => `<li><b>#${i+1}</b> ${user[0].split('@')[0]} <span style="float:right">📄 ${user[1]}</span></li>`).join('') 
+                : '<li>No contributors yet.</li>';
+        }
     }
 }
 
-// --- FEATURE: RECENTLY VIEWED ---
+// ==========================================
+// 4. NEW FEATURES (RECENT, UPVOTE, BOOKMARK, COMMENT)
+// ==========================================
 function trackRecentView(doc) {
     let recent = JSON.parse(localStorage.getItem('recentViews') || '[]');
     recent = recent.filter(d => d.id !== doc.id);
@@ -117,6 +130,7 @@ function trackRecentView(doc) {
     localStorage.setItem('recentViews', JSON.stringify(recent));
     loadRecentlyViewed();
 }
+
 function loadRecentlyViewed() {
     let recent = JSON.parse(localStorage.getItem('recentViews') || '[]');
     const container = document.getElementById('recent-views-container');
@@ -132,7 +146,6 @@ function loadRecentlyViewed() {
     `).join('');
 }
 
-// --- FEATURE: UPVOTES & BOOKMARKS ---
 window.toggleUpvote = async function(docId) {
     if(!currentUser) return alert("Please login to upvote.");
     const { data } = await supabase.from('upvotes').select('*').eq('user_id', currentUser.id).eq('document_id', docId);
@@ -175,7 +188,6 @@ async function loadBookmarks() {
     }).join('');
 }
 
-// --- FEATURE: COMMENTS ---
 async function loadComments(docId) {
     const { data } = await supabase.from('comments').select('*').eq('document_id', docId).order('created_at', { ascending: true });
     let html = data?.map(c => `
@@ -197,7 +209,9 @@ window.postComment = async function(docId) {
     loadComments(docId);
 }
 
-// --- BROWSE & PREVIEW ---
+// ==========================================
+// 5. BROWSE & PREVIEW (WITH ADMIN BUTTONS)
+// ==========================================
 window.previewFile = async function(url, type, docId) {
     if(docId) {
         const { data: doc } = await supabase.from('documents').select('*').eq('id', docId).single();
@@ -227,34 +241,52 @@ window.previewFile = async function(url, type, docId) {
 
 async function listBranches() {
     const { data } = await supabase.from('branches').select('*').order('name');
-    document.getElementById('allBranches').innerHTML = `<h2>Branches</h2>` + (data?.map(b => `
+    let html = `<h2>Branches</h2>`;
+    html += `<button onclick="createBranch()" class="btn-primary" style="margin-bottom: 1em;">+ Add New Branch</button>`;
+    html += data?.map(b => `
        <div class="branch-card" onclick="showBranch('${b.id}')">
         <h3>${b.name}</h3>
-       </div>`).join('') || '<p>No branches.</p>');
+       </div>`).join('') || '<p>No branches.</p>';
+    document.getElementById('allBranches').innerHTML = html;
 }
 
 window.showBranch = async function(id) {
     const { data } = await supabase.from('branches').select('*').eq('id', id).single();
-    document.getElementById('branchDetail').innerHTML = `<h2>${data.name}</h2><div id="semesterList"></div>`;
+    let html = `<h2>${data.name}</h2>`;
+    html += `<button onclick="createSemester('${id}')" class="btn-primary" style="margin-bottom: 1em;">+ Add Semester</button>`;
+    html += `<div id="semesterList"></div>`;
+    
+    document.getElementById('branchDetail').innerHTML = html;
     showDashboard('branchDetail');
+    
     const { data: sems } = await supabase.from('semesters').select('*').eq('branch_id', id);
-    document.getElementById('semesterList').innerHTML = sems?.map(s => `<div class="branch-card" onclick="showSemester('${s.id}')"><h3>Sem ${s.semester_number}</h3></div>`).join('');
+    document.getElementById('semesterList').innerHTML = sems?.map(s => `<div class="branch-card" onclick="showSemester('${s.id}')"><h3>Sem ${s.semester_number}</h3></div>`).join('') || '';
 };
 
 window.showSemester = async function(id) {
     const { data: sem } = await supabase.from('semesters').select('*').eq('id', id).single();
-    document.getElementById('semesterDetail').innerHTML = `<h2>${sem.name}</h2><div id="sectionList"></div>`;
+    let html = `<h2>${sem.name}</h2>`;
+    html += `<button onclick="createSection('${id}')" class="btn-primary" style="margin-bottom: 1em;">+ Add Section</button>`;
+    html += `<div id="sectionList"></div>`;
+    
+    document.getElementById('semesterDetail').innerHTML = html;
     showDashboard('semesterDetail');
+    
     const { data: secs } = await supabase.from('sections').select('*').eq('semester_id', id);
-    document.getElementById('sectionList').innerHTML = secs?.map(s => `<div class="branch-card" onclick="showSection('${s.id}')"><h3>${s.name}</h3></div>`).join('');
+    document.getElementById('sectionList').innerHTML = secs?.map(s => `<div class="branch-card" onclick="showSection('${s.id}')"><h3>${s.name}</h3></div>`).join('') || '';
 };
 
 window.showSection = async function(id) {
     const { data: sec } = await supabase.from('sections').select('*').eq('id', id).single();
-    document.getElementById('sectionDetail').innerHTML = `<h2>${sec.name}</h2><div id="subjectList"></div>`;
+    let html = `<h2>${sec.name}</h2>`;
+    html += `<button onclick="createSubject('${id}')" class="btn-primary" style="margin-bottom: 1em;">+ Add Subject</button>`;
+    html += `<div id="subjectList"></div>`;
+    
+    document.getElementById('sectionDetail').innerHTML = html;
     showDashboard('sectionDetail');
+    
     const { data: subs } = await supabase.from('subjects').select('*').eq('section_id', id);
-    document.getElementById('subjectList').innerHTML = subs?.map(s => `<div class="branch-card" onclick="showSubject('${s.id}')"><h3>${s.name}</h3></div>`).join('');
+    document.getElementById('subjectList').innerHTML = subs?.map(s => `<div class="branch-card" onclick="showSubject('${s.id}')"><h3>${s.name}</h3></div>`).join('') || '';
 };
 
 window.showSubject = async function(id) {
@@ -267,12 +299,14 @@ window.showSubject = async function(id) {
         <input id="docFile" type="file" required />
         <button class="btn-primary">Upload</button>
       </form>
-      <div id="documentList"></div>`;
+      <div id="documentList" style="margin-top: 1em;"></div>`;
     showDashboard('subjectDetail');
     loadDocuments(id);
 };
 
-// --- UPLOADS & DOCUMENTS ---
+// ==========================================
+// 6. UPLOAD & LOAD DOCUMENTS
+// ==========================================
 window.uploadDocument = async function(e) {
     e.preventDefault();
     if(!currentUser) return alert("Please login to upload.");
@@ -321,3 +355,55 @@ async function myUploads() {
     const { data } = await supabase.from('documents').select('*').eq('uploaded_by', currentUser.id);
     document.getElementById('myUploads').innerHTML = `<h2>My Uploads</h2>` + (data?.map(d => `<div class="branch-card"><h4>${d.title}</h4></div>`).join('') || '<p>No uploads yet.</p>');
 }
+
+// ==========================================
+// 7. ADMIN CREATION FUNCTIONS
+// ==========================================
+window.createBranch = async function() {
+    const pass = prompt("Enter Admin Code to create a Branch:");
+    if (pass !== ADMIN_CODE) return alert("Unauthorized or wrong code.");
+    
+    const name = prompt("Enter Branch Name (e.g., Computer Science):");
+    if (!name) return;
+    
+    const { error } = await supabase.from('branches').insert([{ name: name }]);
+    if (error) alert("Error creating branch: " + error.message);
+    else { alert("Branch created!"); listBranches(); }
+};
+
+window.createSemester = async function(branchId) {
+    const pass = prompt("Enter Admin Code to create a Semester:");
+    if (pass !== ADMIN_CODE) return alert("Unauthorized.");
+    
+    const num = prompt("Enter Semester Number (e.g., 1):");
+    const name = prompt("Enter Semester Name (e.g., Fall 2024):");
+    if (!num || !name) return;
+    
+    const { error } = await supabase.from('semesters').insert([{ branch_id: branchId, semester_number: num, name: name }]);
+    if (error) alert("Error: " + error.message);
+    else { alert("Semester created!"); showBranch(branchId); }
+};
+
+window.createSection = async function(semesterId) {
+    const pass = prompt("Enter Admin Code to create a Section:");
+    if (pass !== ADMIN_CODE) return alert("Unauthorized.");
+    
+    const name = prompt("Enter Section Name (e.g., Section A):");
+    if (!name) return;
+    
+    const { error } = await supabase.from('sections').insert([{ semester_id: semesterId, name: name }]);
+    if (error) alert("Error: " + error.message);
+    else { alert("Section created!"); showSemester(semesterId); }
+};
+
+window.createSubject = async function(sectionId) {
+    const pass = prompt("Enter Admin Code to create a Subject:");
+    if (pass !== ADMIN_CODE) return alert("Unauthorized.");
+    
+    const name = prompt("Enter Subject Name (e.g., Quantum Physics):");
+    if (!name) return;
+    
+    const { error } = await supabase.from('subjects').insert([{ section_id: sectionId, name: name }]);
+    if (error) alert("Error: " + error.message);
+    else { alert("Subject created!"); showSection(sectionId); }
+};
