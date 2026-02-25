@@ -65,21 +65,23 @@ function setUserInfo(user) {
     });
 }
 
-async function doSignup(e) {
+window.doSignup = async function(e) {
     e.preventDefault();
     const email = document.getElementById('auth-email').value, pass = document.getElementById('auth-pass').value;
     let { error } = await supabase.auth.signUp({ email, password: pass });
     if (error) alert("Signup error: " + error.message); else { alert("✅ Check email to verify!"); hideModal(); }
 }
 
-async function doLogin(e) {
+window.doLogin = async function(e) {
     e.preventDefault();
     const email = document.getElementById('auth-email').value, pass = document.getElementById('auth-pass').value;
     let { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
     if (error) alert("Login failed: " + error.message); else { setUserInfo(data.user); hideModal(); showDashboard('overview'); }
 }
 
-async function logout() { await supabase.auth.signOut(); setUserInfo(null); showDashboard('overview'); }
+window.logout = async function() { 
+    await supabase.auth.signOut(); setUserInfo(null); showDashboard('overview'); 
+}
 
 supabase.auth.getSession().then(({ data: { session } }) => {
     setUserInfo(session?.user || null);
@@ -89,7 +91,7 @@ supabase.auth.getSession().then(({ data: { session } }) => {
 // ==========================================
 // 3. NAVIGATION & DASHBOARD STATS
 // ==========================================
-function showDashboard(section) {
+window.showDashboard = function(section) {
     document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
     document.getElementById(section).classList.add('active');
     
@@ -98,7 +100,6 @@ function showDashboard(section) {
     if (section === 'myUploads') myUploads();
     if (section === 'savedNotes') loadBookmarks();
 }
-window.showDashboard = showDashboard;
 
 async function updateDashboardStats() {
     const { count: total } = await supabase.from("documents").select("*", { count: "exact", head: true });
@@ -210,7 +211,7 @@ window.postComment = async function(docId) {
 }
 
 // ==========================================
-// 5. BROWSE & PREVIEW (WITH BACK BUTTONS & ADMIN)
+// 5. BROWSE & PREVIEW (WITH BACK & ADD BUTTONS)
 // ==========================================
 window.previewFile = async function(url, type, docId) {
     if(docId) {
@@ -242,7 +243,8 @@ window.previewFile = async function(url, type, docId) {
 async function listBranches() {
     const { data } = await supabase.from('branches').select('*').order('name');
     let html = `<h2>Branches</h2>`;
-    html += `<button onclick="createBranch()" class="btn-primary" style="margin-bottom: 1em;">+ Add New Branch</button>`;
+    // THIS IS THE ADD BRANCH BUTTON
+    html += `<button onclick="createBranch()" class="btn-primary" style="margin-bottom: 1em; background-color: #28a745;">+ Add New Branch</button>`;
     html += data?.map(b => `
        <div class="branch-card" onclick="showBranch('${b.id}')">
         <h3>${b.name}</h3>
@@ -252,25 +254,27 @@ async function listBranches() {
 
 window.showBranch = async function(id) {
     const { data } = await supabase.from('branches').select('*').eq('id', id).single();
-    currentBranch = data; // Save for Back button
+    currentBranch = data;
+    // BACK AND ADD BUTTONS
     let html = `<button onclick="showDashboard('allBranches')" class="btn-action" style="margin-bottom: 1em;">⬅ Back to All Branches</button>`;
     html += `<h2>${data.name}</h2>`;
-    html += `<button onclick="createSemester('${id}')" class="btn-primary" style="margin-bottom: 1em;">+ Add Semester</button>`;
+    html += `<button onclick="createSemester('${id}')" class="btn-primary" style="margin-bottom: 1em; background-color: #28a745;">+ Add Semester</button>`;
     html += `<div id="semesterList"></div>`;
     
     document.getElementById('branchDetail').innerHTML = html;
     showDashboard('branchDetail');
     
     const { data: sems } = await supabase.from('semesters').select('*').eq('branch_id', id);
-    document.getElementById('semesterList').innerHTML = sems?.map(s => `<div class="branch-card" onclick="showSemester('${s.id}')"><h3>Sem ${s.semester_number}</h3></div>`).join('') || '';
+    document.getElementById('semesterList').innerHTML = sems?.map(s => `<div class="branch-card" onclick="showSemester('${s.id}')"><h3>Sem ${s.semester_number}: ${s.name}</h3></div>`).join('') || '';
 };
 
 window.showSemester = async function(id) {
     const { data: sem } = await supabase.from('semesters').select('*').eq('id', id).single();
-    currentSemester = sem; // Save for Back button
+    currentSemester = sem;
+    // BACK AND ADD BUTTONS
     let html = `<button onclick="showBranch('${sem.branch_id}')" class="btn-action" style="margin-bottom: 1em;">⬅ Back to Branch</button>`;
     html += `<h2>${sem.name}</h2>`;
-    html += `<button onclick="createSection('${id}')" class="btn-primary" style="margin-bottom: 1em;">+ Add Section</button>`;
+    html += `<button onclick="createSection('${id}')" class="btn-primary" style="margin-bottom: 1em; background-color: #28a745;">+ Add Section</button>`;
     html += `<div id="sectionList"></div>`;
     
     document.getElementById('semesterDetail').innerHTML = html;
@@ -282,10 +286,11 @@ window.showSemester = async function(id) {
 
 window.showSection = async function(id) {
     const { data: sec } = await supabase.from('sections').select('*').eq('id', id).single();
-    currentSection = sec; // Save for Back button
+    currentSection = sec;
+    // BACK AND ADD BUTTONS
     let html = `<button onclick="showSemester('${sec.semester_id}')" class="btn-action" style="margin-bottom: 1em;">⬅ Back to Semester</button>`;
     html += `<h2>${sec.name}</h2>`;
-    html += `<button onclick="createSubject('${id}')" class="btn-primary" style="margin-bottom: 1em;">+ Add Subject</button>`;
+    html += `<button onclick="createSubject('${id}')" class="btn-primary" style="margin-bottom: 1em; background-color: #28a745;">+ Add Subject</button>`;
     html += `<div id="subjectList"></div>`;
     
     document.getElementById('sectionDetail').innerHTML = html;
@@ -299,12 +304,14 @@ window.showSubject = async function(id) {
     const { data: sub } = await supabase.from('subjects').select('*').eq('id', id).single();
     currentSubject = sub;
     
+    // BACK BUTTON & UPLOAD FORM
     let html = `<button onclick="showSection('${sub.section_id}')" class="btn-action" style="margin-bottom: 1em;">⬅ Back to Section</button>`;
     html += `<h2>${sub.name}</h2>
-      <form onsubmit="uploadDocument(event)">
-        <input id="docTitle" placeholder="Title" required />
-        <input id="docFile" type="file" required />
-        <button class="btn-primary">Upload</button>
+      <form onsubmit="uploadDocument(event)" style="margin-bottom: 2em; padding: 1em; border: 1px solid #ccc; border-radius: 8px;">
+        <h3>Upload a Document</h3>
+        <input id="docTitle" placeholder="Document Title" required style="margin-bottom: 10px; width: 100%;" />
+        <input id="docFile" type="file" required style="margin-bottom: 10px; width: 100%;" />
+        <button class="btn-primary" type="submit">Upload</button>
       </form>
       <div id="documentList" style="margin-top: 1em;"></div>`;
       
@@ -327,7 +334,7 @@ window.uploadDocument = async function(e) {
         await supabase.storage.from('university-notes-files').upload(fileName, file);
         const { data: { publicUrl } } = supabase.storage.from('university-notes-files').getPublicUrl(fileName);
         
-        await supabase.from('documents').insert([{
+        const { error } = await supabase.from('documents').insert([{
             subject_id: currentSubject.id, 
             title: title,
             file_url: publicUrl, 
@@ -337,11 +344,15 @@ window.uploadDocument = async function(e) {
             uploader_email: currentUser.email
         }]);
         
-        alert("Success!");
+        if (error) throw error;
+
+        alert("Upload Success!");
+        document.getElementById('docTitle').value = '';
+        document.getElementById('docFile').value = '';
         loadDocuments(currentSubject.id);
     } catch(err) { 
-        alert("Upload failed: " + err.message); 
-        console.error("Upload Error:", err); 
+        alert("Upload failed! Check the browser console (F12) for the exact error."); 
+        console.error("UPLOAD ERROR DETAILS:", err); 
     }
 };
 
@@ -362,7 +373,7 @@ async function loadDocuments(subId) {
     }).join('') || '<p>No docs here yet.</p>';
 }
 
-async function myUploads() {
+window.myUploads = async function() {
     if(!currentUser) return;
     const { data } = await supabase.from('documents').select('*').eq('uploaded_by', currentUser.id);
     document.getElementById('myUploads').innerHTML = `<h2>My Uploads</h2>` + (data?.map(d => `<div class="branch-card"><h4>${d.title}</h4></div>`).join('') || '<p>No uploads yet.</p>');
