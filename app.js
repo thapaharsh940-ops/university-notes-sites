@@ -89,7 +89,7 @@ supabase.auth.getSession().then(({ data: { session } }) => {
 });
 
 // ==========================================
-// 3. NAVIGATION & DASHBOARD STATS
+// 3. NAVIGATION & BEAUTIFUL DASHBOARD
 // ==========================================
 window.showDashboard = function(section) {
     document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
@@ -101,23 +101,53 @@ window.showDashboard = function(section) {
     if (section === 'savedNotes') loadBookmarks();
 }
 
-async function updateDashboardStats() {
+window.updateDashboardStats = async function() {
     const { count: total } = await supabase.from("documents").select("*", { count: "exact", head: true });
-    const totalDocsEl = document.getElementById("totalDocs");
-    if (totalDocsEl) totalDocsEl.innerText = total || 0;
     
     const { data: docs } = await supabase.from("documents").select("uploader_email");
+    let sortedLeaderboard = [];
     if(docs) {
         let counts = {};
         docs.forEach(d => { if(d.uploader_email) counts[d.uploader_email] = (counts[d.uploader_email] || 0) + 1; });
-        let sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 5);
-        const leaderboard = document.getElementById("leaderboard-list");
-        if (leaderboard) {
-            leaderboard.innerHTML = sorted.length > 0 ? 
-                sorted.map((user, i) => `<li><b>#${i+1}</b> ${user[0].split('@')[0]} <span style="float:right">📄 ${user[1]}</span></li>`).join('') 
-                : '<li>No contributors yet.</li>';
-        }
+        sortedLeaderboard = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 5);
     }
+
+    const overviewSection = document.getElementById('overview');
+    if(overviewSection) {
+        overviewSection.innerHTML = `
+            <h2 style="margin-bottom: 20px; color: #2d3748;">Platform Overview</h2>
+            
+            <div style="display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 250px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 15px rgba(0,0,0,0.1); text-align: center;">
+                    <h3 style="margin: 0; font-size: 1.2em; opacity: 0.9;">Total Documents Uploaded</h3>
+                    <p style="font-size: 3.5em; font-weight: bold; margin: 10px 0 0 0;">${total || 0}</p>
+                    <small style="opacity: 0.8;">From all students combined</small>
+                </div>
+            </div>
+
+            <h3 style="color: #2d3748; margin-bottom: 15px;">🏆 Top Contributors Leaderboard</h3>
+            <ul style="list-style: none; padding: 0; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow: hidden;">
+                ${sortedLeaderboard.length > 0 ? 
+                    sortedLeaderboard.map((user, i) => `
+                    <li style="padding: 15px 20px; border-bottom: 1px solid #edf2f7; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: bold; font-size: 1.1em; color: ${i === 0 ? '#d69e2e' : '#4a5568'};">
+                            #${i+1} &nbsp; ${user[0].split('@')[0]}
+                        </span> 
+                        <span style="background: #ebf4ff; color: #3182ce; padding: 5px 10px; border-radius: 20px; font-weight: bold;">
+                            📄 ${user[1]} uploads
+                        </span>
+                    </li>`).join('') 
+                    : '<li style="padding: 20px; text-align: center; color: #a0aec0;">No contributors yet. Be the first!</li>'
+                }
+            </ul>
+            
+            <div id="recent-views-container" style="margin-top: 30px; display: none;">
+                <h3 style="color: #2d3748;">🕒 Recently Viewed</h3>
+                <div id="recentViews" style="display: flex; flex-direction: column; gap: 10px;"></div>
+            </div>
+        `;
+    }
+    loadRecentlyViewed();
 }
 
 // ==========================================
@@ -141,7 +171,7 @@ function loadRecentlyViewed() {
     if(recent.length === 0) { container.style.display = 'none'; return; }
     container.style.display = 'block';
     list.innerHTML = recent.map(d => `
-        <div class="stat-card" style="cursor:pointer; padding: 1em;" onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')">
+        <div class="stat-card" style="cursor:pointer; padding: 1em; background: #f7fafc; border-left: 4px solid #4299e1;" onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')">
             <h4 style="margin:0; color:#2d3748;">${d.title}</h4>
         </div>
     `).join('');
@@ -211,7 +241,7 @@ window.postComment = async function(docId) {
 }
 
 // ==========================================
-// 5. BROWSE & PREVIEW (WITH BACK & ADD BUTTONS)
+// 5. BROWSE & PREVIEW (WITH ADMIN TRASH CANS)
 // ==========================================
 window.previewFile = async function(url, type, docId) {
     if(docId) {
@@ -240,14 +270,14 @@ window.previewFile = async function(url, type, docId) {
     if(docId) loadComments(docId);
 }
 
-async function listBranches() {
+window.listBranches = async function() {
     const { data } = await supabase.from('branches').select('*').order('name');
     let html = `<h2>Branches</h2>`;
-    // THIS IS THE ADD BRANCH BUTTON
     html += `<button onclick="createBranch()" class="btn-primary" style="margin-bottom: 1em; background-color: #28a745;">+ Add New Branch</button>`;
     html += data?.map(b => `
-       <div class="branch-card" onclick="showBranch('${b.id}')">
-        <h3>${b.name}</h3>
+       <div class="branch-card" onclick="showBranch('${b.id}')" style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin:0;">${b.name}</h3>
+        <button onclick="deleteItem('branches', '${b.id}', '${b.name}', null, listBranches, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
        </div>`).join('') || '<p>No branches.</p>';
     document.getElementById('allBranches').innerHTML = html;
 }
@@ -255,7 +285,6 @@ async function listBranches() {
 window.showBranch = async function(id) {
     const { data } = await supabase.from('branches').select('*').eq('id', id).single();
     currentBranch = data;
-    // BACK AND ADD BUTTONS
     let html = `<button onclick="showDashboard('allBranches')" class="btn-action" style="margin-bottom: 1em;">⬅ Back to All Branches</button>`;
     html += `<h2>${data.name}</h2>`;
     html += `<button onclick="createSemester('${id}')" class="btn-primary" style="margin-bottom: 1em; background-color: #28a745;">+ Add Semester</button>`;
@@ -265,13 +294,16 @@ window.showBranch = async function(id) {
     showDashboard('branchDetail');
     
     const { data: sems } = await supabase.from('semesters').select('*').eq('branch_id', id);
-    document.getElementById('semesterList').innerHTML = sems?.map(s => `<div class="branch-card" onclick="showSemester('${s.id}')"><h3>Sem ${s.semester_number}: ${s.name}</h3></div>`).join('') || '';
+    document.getElementById('semesterList').innerHTML = sems?.map(s => `
+        <div class="branch-card" onclick="showSemester('${s.id}')" style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="margin:0;">Sem ${s.semester_number}: ${s.name}</h3>
+            <button onclick="deleteItem('semesters', '${s.id}', 'Semester ${s.semester_number}', '${id}', showBranch, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
+        </div>`).join('') || '';
 };
 
 window.showSemester = async function(id) {
     const { data: sem } = await supabase.from('semesters').select('*').eq('id', id).single();
     currentSemester = sem;
-    // BACK AND ADD BUTTONS
     let html = `<button onclick="showBranch('${sem.branch_id}')" class="btn-action" style="margin-bottom: 1em;">⬅ Back to Branch</button>`;
     html += `<h2>${sem.name}</h2>`;
     html += `<button onclick="createSection('${id}')" class="btn-primary" style="margin-bottom: 1em; background-color: #28a745;">+ Add Section</button>`;
@@ -281,13 +313,16 @@ window.showSemester = async function(id) {
     showDashboard('semesterDetail');
     
     const { data: secs } = await supabase.from('sections').select('*').eq('semester_id', id);
-    document.getElementById('sectionList').innerHTML = secs?.map(s => `<div class="branch-card" onclick="showSection('${s.id}')"><h3>${s.name}</h3></div>`).join('') || '';
+    document.getElementById('sectionList').innerHTML = secs?.map(s => `
+        <div class="branch-card" onclick="showSection('${s.id}')" style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="margin:0;">${s.name}</h3>
+            <button onclick="deleteItem('sections', '${s.id}', '${s.name}', '${id}', showSemester, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
+        </div>`).join('') || '';
 };
 
 window.showSection = async function(id) {
     const { data: sec } = await supabase.from('sections').select('*').eq('id', id).single();
     currentSection = sec;
-    // BACK AND ADD BUTTONS
     let html = `<button onclick="showSemester('${sec.semester_id}')" class="btn-action" style="margin-bottom: 1em;">⬅ Back to Semester</button>`;
     html += `<h2>${sec.name}</h2>`;
     html += `<button onclick="createSubject('${id}')" class="btn-primary" style="margin-bottom: 1em; background-color: #28a745;">+ Add Subject</button>`;
@@ -297,14 +332,17 @@ window.showSection = async function(id) {
     showDashboard('sectionDetail');
     
     const { data: subs } = await supabase.from('subjects').select('*').eq('section_id', id);
-    document.getElementById('subjectList').innerHTML = subs?.map(s => `<div class="branch-card" onclick="showSubject('${s.id}')"><h3>${s.name}</h3></div>`).join('') || '';
+    document.getElementById('subjectList').innerHTML = subs?.map(s => `
+        <div class="branch-card" onclick="showSubject('${s.id}')" style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="margin:0;">${s.name}</h3>
+            <button onclick="deleteItem('subjects', '${s.id}', '${s.name}', '${id}', showSection, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
+        </div>`).join('') || '';
 };
 
 window.showSubject = async function(id) {
     const { data: sub } = await supabase.from('subjects').select('*').eq('id', id).single();
     currentSubject = sub;
     
-    // BACK BUTTON & UPLOAD FORM
     let html = `<button onclick="showSection('${sub.section_id}')" class="btn-action" style="margin-bottom: 1em;">⬅ Back to Section</button>`;
     html += `<h2>${sub.name}</h2>
       <form onsubmit="uploadDocument(event)" style="margin-bottom: 2em; padding: 1em; border: 1px solid #ccc; border-radius: 8px;">
@@ -363,7 +401,10 @@ async function loadDocuments(subId) {
         const upvotes = d.upvotes ? d.upvotes.length : 0;
         return `
         <div class="branch-card">
-            <h4>${d.title}</h4>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h4 style="margin:0;">${d.title}</h4>
+                <button onclick="deleteItem('documents', '${d.id}', '${d.title}', '${subId}', showSubject, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
+            </div>
             <div style="margin-top: 1em;">
                 <button onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')" class="btn-primary">👁️ Open</button>
                 <button onclick="toggleUpvote('${d.id}')" class="btn-action">👍 (${upvotes})</button>
@@ -429,4 +470,26 @@ window.createSubject = async function(sectionId) {
     const { error } = await supabase.from('subjects').insert([{ section_id: sectionId, name: name }]);
     if (error) alert("Error: " + error.message);
     else { alert("Subject created!"); showSection(sectionId); }
+};
+
+// ==========================================
+// 8. ADMIN DELETE FUNCTIONS
+// ==========================================
+window.deleteItem = async function(table, id, name, parentId, refreshFunction, event) {
+    event.stopPropagation(); 
+    
+    const pass = prompt(`Enter Admin Code to delete "${name}":`);
+    if (pass !== ADMIN_CODE) return alert("Unauthorized or wrong code.");
+    
+    const confirmDelete = confirm(`🚨 WARNING! Are you SURE you want to delete "${name}"? This cannot be undone!`);
+    if (!confirmDelete) return;
+    
+    const { error } = await supabase.from(table).delete().eq('id', id);
+    if (error) {
+        alert("Error deleting: " + error.message);
+    } else {
+        alert("🗑️ Deleted successfully!");
+        if (parentId) refreshFunction(parentId);
+        else refreshFunction(); 
+    }
 };
