@@ -99,6 +99,7 @@ window.showDashboard = function(section) {
     if (section === 'allBranches') listBranches();
     if (section === 'myUploads') myUploads();
     if (section === 'savedNotes') loadBookmarks();
+    if (section === 'searchSection') showSearchPage();
 }
 
 window.updateDashboardStats = async function() {
@@ -182,7 +183,14 @@ window.toggleUpvote = async function(docId) {
     const { data } = await supabase.from('upvotes').select('*').eq('user_id', currentUser.id).eq('document_id', docId);
     if(data && data.length > 0) await supabase.from('upvotes').delete().eq('id', data[0].id);
     else await supabase.from('upvotes').insert([{ user_id: currentUser.id, document_id: docId }]);
-    if(currentSubject) loadDocuments(currentSubject.id);
+    
+    // Refresh current view
+    if(document.getElementById('subjectDetail').classList.contains('active') && currentSubject) {
+        loadDocuments(currentSubject.id);
+    } else if (document.getElementById('searchSection').classList.contains('active')) {
+        const query = document.getElementById('searchInput').value;
+        if(query) performLiveSearch(query);
+    }
 }
 
 window.toggleBookmark = async function(docId) {
@@ -195,7 +203,13 @@ window.toggleBookmark = async function(docId) {
         await supabase.from('bookmarks').insert([{ user_id: currentUser.id, document_id: docId }]);
         alert("Added to Saved Notes 🔖");
     }
-    if(currentSubject) loadDocuments(currentSubject.id);
+    
+    if(document.getElementById('subjectDetail').classList.contains('active') && currentSubject) {
+        loadDocuments(currentSubject.id);
+    } else if (document.getElementById('searchSection').classList.contains('active')) {
+        const query = document.getElementById('searchInput').value;
+        if(query) performLiveSearch(query);
+    }
     loadBookmarks();
 }
 
@@ -345,13 +359,19 @@ window.showSubject = async function(id) {
     
     let html = `<button onclick="showSection('${sub.section_id}')" class="btn-action" style="margin-bottom: 1em;">⬅ Back to Section</button>`;
     html += `<h2>${sub.name}</h2>
-      <form onsubmit="uploadDocument(event)" style="margin-bottom: 2em; padding: 1em; border: 1px solid #ccc; border-radius: 8px;">
-        <h3>Upload a Document</h3>
-        <input id="docTitle" placeholder="Document Title" required style="margin-bottom: 10px; width: 100%;" />
-        <input id="docFile" type="file" required style="margin-bottom: 10px; width: 100%;" />
-        <button class="btn-primary" type="submit">Upload</button>
+      <form onsubmit="uploadDocument(event)" style="margin-bottom: 2em; padding: 1em; border: 1px solid #e2e8f0; border-radius: 8px; background: #f7fafc;">
+        <h3 style="margin-top:0;">Upload a Document</h3>
+        <input id="docTitle" placeholder="Document Title (e.g., Chapter 1 Notes)" required style="margin-bottom: 10px; width: 100%; padding: 8px;" />
+        
+        <label style="font-weight: bold; font-size: 0.9em; display:block; margin-bottom: 5px;">Main File (PDF, Image, etc.): *</label>
+        <input id="docFile" type="file" required style="margin-bottom: 15px; width: 100%;" />
+
+        <label style="font-weight: bold; font-size: 0.9em; display:block; margin-bottom: 5px;">Thumbnail Image (Optional):</label>
+        <input id="docThumb" type="file" accept="image/*" style="margin-bottom: 15px; width: 100%;" />
+        
+        <button class="btn-primary" type="submit" style="width: 100%;">Upload</button>
       </form>
-      <div id="documentList" style="margin-top: 1em;"></div>`;
+      <div id="documentList" style="margin-top: 1em; display: flex; flex-wrap: wrap; gap: 15px;"></div>`;
       
     document.getElementById('subjectDetail').innerHTML = html;
     showDashboard('subjectDetail');
@@ -359,25 +379,43 @@ window.showSubject = async function(id) {
 };
 
 // ==========================================
-// 6. UPLOAD & LOAD DOCUMENTS
+// 6. UPLOAD & LOAD DOCUMENTS (WITH THUMBNAILS)
 // ==========================================
 window.uploadDocument = async function(e) {
     e.preventDefault();
     if(!currentUser) return alert("Please login to upload.");
+    
     const title = document.getElementById('docTitle').value;
     const file = document.getElementById('docFile').files[0];
+    const thumbFile = document.getElementById('docThumb').files[0];
     
     try {
+        // 1. Upload Main File
         const fileName = `${Date.now()}_${file.name}`;
         await supabase.storage.from('university-notes-files').upload(fileName, file);
-        const { data: { publicUrl } } = supabase.storage.from('university-notes-files').getPublicUrl(fileName);
+        const { data: { publicUrl: fileUrl } } = supabase.storage.from('university-notes-files').getPublicUrl(fileName);
         
+        // 2. Handle Thumbnail Logic
+        let finalThumbUrl = null;
+        if (thumbFile) {
+            const thumbName = `thumb_${Date.now()}_${thumbFile.name}`;
+            await supabase.storage.from('university-notes-files').upload(thumbName, thumbFile);
+            const { data: { publicUrl: uploadedThumb } } = supabase.storage.from('university-notes-files').getPublicUrl(thumbName);
+            finalThumbUrl = uploadedThumb;
+        } else if (file.type.startsWith('image/')) {
+            finalThumbUrl = fileUrl;
+        } else {
+            finalThumbUrl = 'https://placehold.co/400x300/e2e8f0/4a5568?text=Document\nNo+Thumbnail';
+        }
+        
+        // 3. Save to Database
         const { error } = await supabase.from('documents').insert([{
             subject_id: currentSubject.id, 
             title: title,
-            file_url: publicUrl, 
+            file_url: fileUrl, 
             file_type: file.type, 
             file_size: file.size,
+            thumbnail_url: finalThumbUrl,
             uploaded_by: currentUser.id,
             uploader_email: currentUser.email
         }]);
@@ -385,33 +423,39 @@ window.uploadDocument = async function(e) {
         if (error) throw error;
 
         alert("Upload Success!");
-        document.getElementById('docTitle').value = '';
-        document.getElementById('docFile').value = '';
-        loadDocuments(currentSubject.id);
+        showSubject(currentSubject.id); 
     } catch(err) { 
-        alert("Upload failed! Check the browser console (F12) for the exact error."); 
-        console.error("UPLOAD ERROR DETAILS:", err); 
+        alert("Upload failed! Check console."); 
+        console.error("UPLOAD ERROR:", err); 
     }
 };
 
-async function loadDocuments(subId) {
+window.loadDocuments = async function(subId) {
     const { data } = await supabase.from('documents').select('*, upvotes(id), bookmarks(id)').eq('subject_id', subId).order('created_at', {ascending: false});
     const list = document.getElementById('documentList');
+    
     list.innerHTML = data?.map(d => {
         const upvotes = d.upvotes ? d.upvotes.length : 0;
+        const thumb = d.thumbnail_url || 'https://placehold.co/400x300/e2e8f0/4a5568?text=No+Thumbnail';
+        
         return `
-        <div class="branch-card">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h4 style="margin:0;">${d.title}</h4>
-                <button onclick="deleteItem('documents', '${d.id}', '${d.title}', '${subId}', showSubject, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
-            </div>
-            <div style="margin-top: 1em;">
-                <button onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')" class="btn-primary">👁️ Open</button>
-                <button onclick="toggleUpvote('${d.id}')" class="btn-action">👍 (${upvotes})</button>
-                <button onclick="toggleBookmark('${d.id}')" class="btn-action">🔖 Save</button>
+        <div class="branch-card" style="width: 250px; padding: 0; overflow: hidden; display: flex; flex-direction: column; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <img src="${thumb}" alt="Thumbnail" style="width: 100%; height: 140px; object-fit: cover; border-bottom: 1px solid #e2e8f0; cursor: pointer;" onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')" />
+            
+            <div style="padding: 15px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 10px;">
+                    <h4 style="margin:0; font-size: 1.1em; line-height: 1.3;">${d.title}</h4>
+                    <button onclick="deleteItem('documents', '${d.id}', '${d.title}', '${subId}', () => loadDocuments('${subId}'), event)" style="background:transparent; color:#e53e3e; border:none; cursor:pointer; font-size: 1.2em;">🗑️</button>
+                </div>
+                
+                <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                    <button onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')" class="btn-primary" style="flex: 1; padding: 5px; font-size: 0.9em;">👁️ Open</button>
+                    <button onclick="toggleUpvote('${d.id}')" class="btn-action" style="flex: 1; padding: 5px; font-size: 0.9em;">👍 (${upvotes})</button>
+                    <button onclick="toggleBookmark('${d.id}')" class="btn-action" style="flex: 1; padding: 5px; font-size: 0.9em;">🔖</button>
+                </div>
             </div>
         </div>`
-    }).join('') || '<p>No docs here yet.</p>';
+    }).join('') || '<p style="width: 100%;">No documents uploaded yet.</p>';
 }
 
 window.myUploads = async function() {
@@ -492,4 +536,71 @@ window.deleteItem = async function(table, id, name, parentId, refreshFunction, e
         if (parentId) refreshFunction(parentId);
         else refreshFunction(); 
     }
+};
+
+// ==========================================
+// 9. LIVE SEARCH FEATURE
+// ==========================================
+window.showSearchPage = function() {
+    document.getElementById('searchSection').innerHTML = `
+        <h2>Search Notes</h2>
+        <input type="text" id="searchInput" placeholder="Start typing a document title (e.g., 'Quantum')..." 
+               style="width: 100%; padding: 15px; font-size: 1.1em; border: 2px solid #3182ce; border-radius: 8px; margin-bottom: 20px;"
+               onkeyup="performLiveSearch(this.value)" />
+               
+        <div id="searchResults" style="display: flex; flex-wrap: wrap; gap: 15px;">
+            <p style="color: #718096;">Type at least 2 letters to start searching...</p>
+        </div>
+    `;
+}
+
+window.performLiveSearch = async function(query) {
+    const resultsContainer = document.getElementById('searchResults');
+    
+    if (query.length < 2) {
+        resultsContainer.innerHTML = '<p style="color: #718096;">Type at least 2 letters to start searching...</p>';
+        return;
+    }
+
+    resultsContainer.innerHTML = '<p>Searching...</p>';
+
+    const { data, error } = await supabase.from('documents')
+        .select('*, upvotes(id), bookmarks(id)')
+        .ilike('title', `%${query}%`)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        resultsContainer.innerHTML = `<p style="color: red;">Search error: ${error.message}</p>`;
+        return;
+    }
+
+    if (!data || data.length === 0) {
+        resultsContainer.innerHTML = `
+            <div style="text-align: center; width: 100%; padding: 20px;">
+                <h3 style="color: #4a5568;">No notes found for "${query}"</h3>
+                <p style="color: #718096;">Try a different keyword or check your spelling.</p>
+            </div>`;
+        return;
+    }
+
+    resultsContainer.innerHTML = data.map(d => {
+        const upvotes = d.upvotes ? d.upvotes.length : 0;
+        const thumb = d.thumbnail_url || 'https://placehold.co/400x300/e2e8f0/4a5568?text=No+Thumbnail';
+        
+        return `
+        <div class="branch-card" style="width: 250px; padding: 0; overflow: hidden; display: flex; flex-direction: column; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <img src="${thumb}" style="width: 100%; height: 140px; object-fit: cover; border-bottom: 1px solid #e2e8f0; cursor: pointer;" onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')" />
+            <div style="padding: 15px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 10px;">
+                    <h4 style="margin:0; font-size: 1.1em; line-height: 1.3;">${d.title}</h4>
+                    <button onclick="deleteItem('documents', '${d.id}', '${d.title}', null, () => performLiveSearch('${query}'), event)" style="background:transparent; color:#e53e3e; border:none; cursor:pointer;">🗑️</button>
+                </div>
+                <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                    <button onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')" class="btn-primary" style="flex: 1; padding: 5px;">👁️ Open</button>
+                    <button onclick="toggleUpvote('${d.id}')" class="btn-action" style="flex: 1; padding: 5px;">👍 (${upvotes})</button>
+                    <button onclick="toggleBookmark('${d.id}')" class="btn-action" style="flex: 1; padding: 5px;">🔖</button>
+                </div>
+            </div>
+        </div>`
+    }).join('');
 };
