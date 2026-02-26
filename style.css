@@ -43,7 +43,7 @@ body {
 .nav-item:hover { background: #32494d; border-left: 4px solid #4299e1; }
 .nav-item.danger { color: #fc8181; }
 
-.main-content { margin-left: 220px; min-height: 100vh; }
+.main-content { margin-left: 260px; min-height: 100vh; }
 header {
     background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.07);
     display: flex; align-items: center; justify-content: space-between;
