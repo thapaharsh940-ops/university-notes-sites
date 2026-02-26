@@ -116,8 +116,30 @@ window.updateDashboardStats = async function() {
     const overviewSection = document.getElementById('overview');
     if(overviewSection) {
         overviewSection.innerHTML = `
-            <h2 style="margin-bottom: 20px; color: #2d3748;">Platform Overview</h2>
-            
+        // ==========================================
+           //  the mobile dashboard 
+         // ==========================================  
+             <h2 style="margin-bottom: 20px; color: #2d3748;">Platform Overview</h2>
+            <div class="mobile-header">
+    <h2 style="margin: 0; font-size: 1.2em;">🎓 University Notes</h2>
+    <button id="mobile-menu-btn" class="hamburger">☰</button>
+</div>
+
+<div id="sidebar" class="sidebar closed">
+    <div style="padding: 20px; font-size: 1.5em; font-weight: bold; color: white; border-bottom: 1px solid #374151;">
+        Menu
+    </div>
+    <div class="nav-item" onclick="showDashboard('overview')">📊 Dashboard</div>
+    <div class="nav-item" onclick="showDashboard('allBranches')">📁 Browse</div>
+    <div class="nav-item" onclick="showDashboard('searchSection')">🔍 Search</div>
+    <div class="nav-item" onclick="showDashboard('myUploads')">📤 My Uploads</div>
+    <div class="nav-item" onclick="showDashboard('savedNotes')">🔖 Saved Notes</div>
+    
+    <div style="margin-top: auto; padding: 20px;">
+        <div id="user-bar" style="color: #9ca3af; margin-bottom: 10px; font-size: 0.9em;">Not logged in</div>
+        <div class="nav-item login-btn" onclick="showAuthModal('login')">🔑 Login</div>
+    </div>
+</div>
             <div style="display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap;">
                 <div style="flex: 1; min-width: 250px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 15px rgba(0,0,0,0.1); text-align: center;">
                     <h3 style="margin: 0; font-size: 1.2em; opacity: 0.9;">Total Documents Uploaded</h3>
