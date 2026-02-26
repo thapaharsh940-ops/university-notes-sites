@@ -4,7 +4,7 @@ let currentUser = null;
 let currentBranch = null; let currentSemester = null;
 let currentSection = null; let currentSubject = null;
 
-// ==========================================
+// ========================================
 // 1. UI & MODAL SETUP
 // ==========================================
 const sidebar = document.getElementById('sidebar');
