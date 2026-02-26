@@ -110,3 +110,100 @@ textarea { min-height: 100px; resize: vertical; }
 .btn-action:hover { background: #edf2f7; }
 .btn-action.active-upvote { background: #48bb78; color: white; border-color: #48bb78; }
 .btn-action.active-bookmark { background: #ecc94b; color: #744210; border-color: #ecc94b; }
+/* =========================================
+   PROFESSIONAL SIDEBAR (BLACK & COLORFUL)
+========================================= */
+.sidebar {
+    width: 260px;
+    background-color: #111827; /* Deep professional black */
+    color: #ffffff;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 4px 0 15px rgba(0,0,0,0.5);
+}
+
+.nav-item {
+    padding: 15px 20px;
+    color: #9ca3af; /* Light gray text */
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-left: 4px solid transparent; /* Hidden border for animation */
+}
+
+/* The Colorful Hover Effect! */
+.nav-item:hover, .nav-item.active {
+    background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%); /* Blue to Purple gradient */
+    color: #ffffff;
+    border-left: 4px solid #ffffff;
+}
+
+/* =========================================
+   MOBILE HEADER (THE 3 LINES)
+========================================= */
+.mobile-header {
+    display: none; /* Hidden on computers */
+    background-color: #000000; /* Pure black */
+    color: white;
+    padding: 15px 20px;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+
+.hamburger {
+    font-size: 28px;
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 0;
+}
+
+/* =========================================
+   MOBILE RESPONSIVENESS (PHONES ONLY)
+========================================= */
+@media (max-width: 768px) {
+    /* Show the black top bar */
+    .mobile-header {
+        display: flex; 
+    }
+
+    /* Hide sidebar completely off the left side of the screen */
+    .sidebar.closed {
+        transform: translateX(-100%);
+    }
+
+    /* Slide it in smoothly when button is clicked */
+    .sidebar.open {
+        transform: translateX(0);
+    }
+
+    /* Fix the main content area */
+    .main-content {
+        margin-left: 0 !important; /* Remove desktop margin */
+        padding: 15px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Make cards fit perfectly on mobile screens */
+    .branch-card {
+        width: 100% !important; 
+        margin-bottom: 15px;
+    }
+    
+    /* Make the beautiful dashboard stats stack on top of each other */
+    #overview > div {
+        flex-direction: column;
+    }
+}
