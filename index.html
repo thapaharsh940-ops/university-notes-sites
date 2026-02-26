@@ -1,88 +1,65 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>University Notes Platform</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>University Notes</title>
+    
     <link rel="stylesheet" href="style.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <nav id="sidebar" class="sidebar">
-        <div class="sidebar-header">
-            <span class="logo">📘 UniNotes</span>
-            <button id="sidebar-toggle">☰</button>
-        </div>
-        <ul class="nav-list">
-            <li class="nav-item" onclick="showDashboard('overview')">📊 Dashboard</li>
-            <li class="nav-item" onclick="showDashboard('allBranches')">📚 Browse</li>
-            <li class="nav-item" onclick="showDashboard('search')">🔍 Search</li>
-            <li class="nav-item" onclick="showDashboard('myUploads')">📤 My Uploads</li>
-            <li class="nav-item" onclick="showDashboard('savedNotes')">🔖 Saved Notes</li> <li class="nav-item danger" onclick="logout()">🚪 Logout</li>
-        </ul>
-    </nav>
 
-    <div class="main-content">
-        <header>
-            <button id="mobile-menu-btn">☰</button>
-            <span id="header-title">University Notes</span>
-            <span id="user-bar"></span>
-        </header>
-        
-        <div id="modal-bg" class="modal-bg"></div>
-        <div id="auth-modal" class="modal-content small"></div>
-        <div id="preview-modal" class="modal-content"></div>
-        <div id="admin-modal" class="modal-content small"></div>
-        
-        <main id="dashboard-main">
-            <section id="overview" class="dashboard-section active">
-                <h2>Dashboard Overview</h2>
-                
-                <div id="recent-views-container" style="display:none; margin-bottom: 2em;">
-                    <h3>🕒 Recently Viewed</h3>
-                    <div id="recentViews" class="stats-row"></div>
-                </div>
-
-                <div class="stats-row">
-                    <div class="stat-card"><h4>Total Docs</h4><div id="totalDocs">0</div></div>
-                    <div class="stat-card"><h4>Monthly</h4><div id="monthlyUploads">0</div></div>
-                    <div class="stat-card"><h4>Today</h4><div id="todayUploads">0</div></div>
-                    <div class="stat-card"><h4>My Uploads</h4><div id="myUploadsCount">0</div></div>
-                </div>
-
-                <div style="display: flex; gap: 2em; flex-wrap: wrap; margin-top: 2em;">
-                    <div style="flex: 1; min-width: 300px;">
-                        <h3>Activity Log</h3>
-                        <ul id="activity-log" class="activity-list"></ul>
-                    </div>
-                    <div style="flex: 1; min-width: 300px;">
-                        <h3>🏆 Top Contributors</h3>
-                        <ul id="leaderboard-list" class="activity-list"></ul>
-                    </div>
-                </div>
-            </section>
-            
-            <section id="allBranches" class="dashboard-section"></section>
-            <section id="branchDetail" class="dashboard-section"></section>
-            <section id="semesterDetail" class="dashboard-section"></section>
-            <section id="sectionDetail" class="dashboard-section"></section>
-            <section id="subjectDetail" class="dashboard-section"></section>
-            <section id="search" class="dashboard-section">
-                <h2>Search</h2>
-                <input id="searchInput" class="search-box" placeholder="Search..." autocomplete="off">
-                <div id="subjectResults"></div>
-                <div id="searchResults"></div>
-            </section>
-            <section id="myUploads" class="dashboard-section"></section>
-            
-            <section id="savedNotes" class="dashboard-section">
-                <h2>🔖 Saved Notes</h2>
-                <div id="savedNotesList"></div>
-            </section>
-        </main>
+    <div class="mobile-header">
+        <h2 style="margin: 0; font-size: 1.2em;">🎓 UniNotes</h2>
+        <button id="mobile-menu-btn" class="hamburger">☰</button>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabaseClient.js"></script>
+    <div id="sidebar" class="sidebar closed">
+        <div style="padding: 20px; font-size: 1.5em; font-weight: bold; color: white; border-bottom: 1px solid #374151;">
+            UniNotes
+        </div>
+        
+        <div class="nav-item" onclick="showDashboard('overview')">📊 Dashboard</div>
+        <div class="nav-item" onclick="showDashboard('allBranches')">📁 Browse</div>
+        <div class="nav-item" onclick="showDashboard('searchSection')">🔍 Search</div>
+        <div class="nav-item" onclick="initGlobalUpload()" style="color: #4ade80;">☁️ Quick Upload</div>
+        <div class="nav-item" onclick="showDashboard('myUploads')">📤 My Uploads</div>
+        <div class="nav-item" onclick="showDashboard('savedNotes')">🔖 Saved Notes</div>
+        
+        <div style="margin-top: auto; padding: 20px;">
+            <div id="user-bar" style="color: #9ca3af; margin-bottom: 10px; font-size: 0.9em;">Not logged in</div>
+            <div class="nav-item login-btn" onclick="showAuthModal('login')">🔑 Login</div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div id="overview" class="dashboard-section active"></div>
+        
+        <div id="allBranches" class="dashboard-section"></div>
+        <div id="branchDetail" class="dashboard-section"></div>
+        <div id="semesterDetail" class="dashboard-section"></div>
+        <div id="sectionDetail" class="dashboard-section"></div>
+        <div id="subjectDetail" class="dashboard-section"></div>
+        
+        <div id="searchSection" class="dashboard-section"></div>
+        
+        <div id="globalUpload" class="dashboard-section"></div>
+        
+        <div id="myUploads" class="dashboard-section"></div>
+        
+        <div id="savedNotes" class="dashboard-section">
+            <h2>🔖 Saved Notes</h2>
+            <div id="savedNotesList" style="display: flex; flex-wrap: wrap; gap: 15px;"></div>
+        </div>
+    </div>
+
+    <div id="modal-bg" class="modal-bg">
+        <div id="auth-modal" class="modal-content"></div>
+        <div id="preview-modal" class="modal-content" style="max-width: 800px; width: 90%;"></div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>
