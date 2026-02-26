@@ -4,51 +4,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>University Notes</title>
-    
     <link rel="stylesheet" href="style.css">
-    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-    <div class="mobile-header">
-        <h2 style="margin: 0; font-size: 1.2em;">🎓 UniNotes</h2>
-        <button id="mobile-menu-btn" class="hamburger">☰</button>
-    </div>
-
-    <div id="sidebar" class="sidebar closed">
-        <div style="padding: 20px; font-size: 1.5em; font-weight: bold; color: white; border-bottom: 1px solid #374151;">
+    <div id="sidebar" class="sidebar">
+        <div style="padding: 20px; font-size: 1.5em; font-weight: bold; color: white; border-bottom: 1px solid #4a5568;">
             UniNotes
         </div>
         
         <div class="nav-item" onclick="showDashboard('overview')">📊 Dashboard</div>
         <div class="nav-item" onclick="showDashboard('allBranches')">📁 Browse</div>
         <div class="nav-item" onclick="showDashboard('searchSection')">🔍 Search</div>
-        <div class="nav-item" onclick="initGlobalUpload()" style="color: #4ade80;">☁️ Quick Upload</div>
         <div class="nav-item" onclick="showDashboard('myUploads')">📤 My Uploads</div>
         <div class="nav-item" onclick="showDashboard('savedNotes')">🔖 Saved Notes</div>
         
         <div style="margin-top: auto; padding: 20px;">
-            <div id="user-bar" style="color: #9ca3af; margin-bottom: 10px; font-size: 0.9em;">Not logged in</div>
+            <div id="user-bar" style="color: #a0aec0; margin-bottom: 10px; font-size: 0.9em;">Not logged in</div>
             <div class="nav-item login-btn" onclick="showAuthModal('login')">🔑 Login</div>
         </div>
     </div>
 
     <div class="main-content">
         <div id="overview" class="dashboard-section active"></div>
-        
         <div id="allBranches" class="dashboard-section"></div>
         <div id="branchDetail" class="dashboard-section"></div>
         <div id="semesterDetail" class="dashboard-section"></div>
         <div id="sectionDetail" class="dashboard-section"></div>
         <div id="subjectDetail" class="dashboard-section"></div>
-        
         <div id="searchSection" class="dashboard-section"></div>
-        
-        <div id="globalUpload" class="dashboard-section"></div>
-        
         <div id="myUploads" class="dashboard-section"></div>
-        
         <div id="savedNotes" class="dashboard-section">
             <h2>🔖 Saved Notes</h2>
             <div id="savedNotesList" style="display: flex; flex-wrap: wrap; gap: 15px;"></div>
