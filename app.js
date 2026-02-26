@@ -116,9 +116,9 @@ window.updateDashboardStats = async function() {
     const overviewSection = document.getElementById('overview');
     if(overviewSection) {
         overviewSection.innerHTML = `
-        // ==========================================
-           //  the mobile dashboard 
-         // ==========================================  
+
+
+      
              <h2 style="margin-bottom: 20px; color: #2d3748;">Platform Overview</h2>
             <div class="mobile-header">
     <h2 style="margin: 0; font-size: 1.2em;">🎓 University Notes</h2>
