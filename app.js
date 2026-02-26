@@ -1,7 +1,4 @@
-// --- PUT YOUR ACTUAL SUPABASE KEYS HERE ---
-const supabaseUrl = 'YOUR_SUPABASE_URL';
-const supabaseKey = 'YOUR_SUPABASE_KEY';
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
 
 const ADMIN_CODE = "sahil12345"; 
 
@@ -10,9 +7,26 @@ let currentBranch = null; let currentSemester = null;
 let currentSection = null; let currentSubject = null;
 
 // ==========================================
-// 1. UI & MODAL SETUP
+// 1. UI, MODAL & MOBILE SETUP
 // ==========================================
-window.onclick = e => { if (e.target.classList.contains('modal-bg')) hideModal(); };
+const sidebar = document.getElementById('sidebar');
+const mobileBtn = document.getElementById('mobile-menu-btn');
+if (mobileBtn) mobileBtn.onclick = () => {
+    sidebar.classList.toggle("open");
+    sidebar.classList.toggle("closed");
+};
+
+// Close modal OR sidebar if clicking outside (The Red Area Fix)
+window.onclick = e => { 
+    if (e.target.classList.contains('modal-bg')) hideModal(); 
+    
+    if (window.innerWidth <= 768) {
+        if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && (!mobileBtn || !mobileBtn.contains(e.target))) {
+            sidebar.classList.remove('open');
+            sidebar.classList.add('closed');
+        }
+    }
+};
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideModal(); });
 
 function showModal(html, which = "#auth-modal") {
@@ -51,9 +65,9 @@ function setUserInfo(user) {
     navItems.forEach(item => {
         if (item.textContent.includes('Logout') || item.textContent.includes('Login')) {
             if (user) {
-                item.innerHTML = '🚪 Logout'; item.onclick = logout; item.style.color = "#fc8181";
+                item.innerHTML = '🚪 Logout'; item.onclick = logout; item.style.color = "#ef4444";
             } else {
-                item.innerHTML = '🔑 Login'; item.onclick = () => showAuthModal('login'); item.style.color = "#e2e8f0";
+                item.innerHTML = '🔑 Login'; item.onclick = () => showAuthModal('login'); item.style.color = "#9ca3af";
             }
         }
     });
@@ -81,12 +95,13 @@ supabase.auth.getSession().then(({ data: { session } }) => {
 });
 
 // ==========================================
-// 3. NAVIGATION & BEAUTIFUL DASHBOARD
+// 3. NAVIGATION & DASHBOARD (With active color fix)
 // ==========================================
 window.showDashboard = function(section) {
     document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
     document.getElementById(section).classList.add('active');
     
+    // Highlight the active menu button
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
         const clickAction = item.getAttribute('onclick') || '';
@@ -98,6 +113,12 @@ window.showDashboard = function(section) {
     if (section === 'myUploads') myUploads();
     if (section === 'savedNotes') loadBookmarks();
     if (section === 'searchSection') showSearchPage();
+
+    // Auto-close sidebar on mobile
+    if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
+        sidebar.classList.remove('open');
+        sidebar.classList.add('closed');
+    }
 }
 
 window.updateDashboardStats = async function() {
@@ -115,22 +136,26 @@ window.updateDashboardStats = async function() {
     if(overviewSection) {
         overviewSection.innerHTML = `
             <h2 style="margin-bottom: 20px; color: #2d3748;">Platform Overview</h2>
+            
             <div style="display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap;">
                 <div style="flex: 1; min-width: 250px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 15px rgba(0,0,0,0.1); text-align: center;">
                     <h3 style="margin: 0; font-size: 1.2em; opacity: 0.9;">Total Documents Uploaded</h3>
                     <p style="font-size: 3.5em; font-weight: bold; margin: 10px 0 0 0;">${total || 0}</p>
                 </div>
             </div>
+
             <h3 style="color: #2d3748; margin-bottom: 15px;">🏆 Top Contributors Leaderboard</h3>
             <ul style="list-style: none; padding: 0; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow: hidden;">
                 ${sortedLeaderboard.length > 0 ? 
                     sortedLeaderboard.map((user, i) => `
                     <li style="padding: 15px 20px; border-bottom: 1px solid #edf2f7; display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-weight: bold;">#${i+1} &nbsp; ${user[0].split('@')[0]}</span> 
+                        <span style="font-weight: bold; font-size: 1.1em;">#${i+1} &nbsp; ${user[0].split('@')[0]}</span> 
                         <span style="background: #ebf4ff; color: #3182ce; padding: 5px 10px; border-radius: 20px; font-weight: bold;">📄 ${user[1]} uploads</span>
-                    </li>`).join('') : '<li style="padding: 20px; text-align: center;">No contributors yet!</li>'
+                    </li>`).join('') 
+                    : '<li style="padding: 20px; text-align: center; color: #a0aec0;">No contributors yet. Be the first!</li>'
                 }
             </ul>
+            
             <div id="recent-views-container" style="margin-top: 30px; display: none;">
                 <h3 style="color: #2d3748;">🕒 Recently Viewed</h3>
                 <div id="recentViews" style="display: flex; flex-direction: column; gap: 10px;"></div>
@@ -157,12 +182,14 @@ function loadRecentlyViewed() {
     const container = document.getElementById('recent-views-container');
     const list = document.getElementById('recentViews');
     if(!container || !list) return;
+    
     if(recent.length === 0) { container.style.display = 'none'; return; }
     container.style.display = 'block';
     list.innerHTML = recent.map(d => `
         <div class="stat-card" style="cursor:pointer; padding: 1em; background: #f7fafc; border-left: 4px solid #4299e1;" onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')">
-            <h4 style="margin:0;">${d.title}</h4>
-        </div>`).join('');
+            <h4 style="margin:0; color:#2d3748;">${d.title}</h4>
+        </div>
+    `).join('');
 }
 
 window.toggleUpvote = async function(docId) {
@@ -185,6 +212,7 @@ window.toggleBookmark = async function(docId) {
         await supabase.from('bookmarks').insert([{ user_id: currentUser.id, document_id: docId }]);
         alert("Added to Saved Notes 🔖");
     }
+    
     if(document.getElementById('subjectDetail').classList.contains('active') && currentSubject) loadDocuments(currentSubject.id);
     else if(document.getElementById('searchSection').classList.contains('active')) performLiveSearch(document.getElementById('searchInput').value);
     loadBookmarks();
@@ -205,7 +233,7 @@ async function loadBookmarks() {
         <div class="branch-card">
             <h4>🔖 ${d.title}</h4>
             <button onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')" class="btn-primary">👁️ View</button>
-            <button onclick="toggleBookmark('${d.id}')" class="btn-action">Unsave</button>
+            <button onclick="toggleBookmark('${d.id}')" class="btn-action active-bookmark">Unsave</button>
         </div>`
     }).join('');
 }
@@ -213,10 +241,11 @@ async function loadBookmarks() {
 async function loadComments(docId) {
     const { data } = await supabase.from('comments').select('*').eq('document_id', docId).order('created_at', { ascending: true });
     let html = data?.map(c => `
-        <div style="background:#f7fafc; padding:10px; margin-bottom:5px; border-radius:5px;">
-            <div style="font-weight:bold; font-size:0.9em;">${c.user_email.split('@')[0]} <small style="color:gray">${new Date(c.created_at).toLocaleDateString()}</small></div>
+        <div class="comment-box">
+            <div class="comment-author" style="font-weight:bold; font-size:0.9em;">${c.user_email.split('@')[0]} <small style="color:gray">${new Date(c.created_at).toLocaleDateString()}</small></div>
             <div>${c.content}</div>
-        </div>`).join('') || '<p><small>No comments yet.</small></p>';
+        </div>
+    `).join('') || '<p><small>No comments yet.</small></p>';
     const commentList = document.getElementById('comment-list');
     if(commentList) commentList.innerHTML = html;
 }
@@ -231,28 +260,30 @@ window.postComment = async function(docId) {
 }
 
 // ==========================================
-// 5. BROWSE & PREVIEW
+// 5. BROWSE & PREVIEW (WITH ADMIN TRASH CANS)
 // ==========================================
 window.previewFile = async function(url, type, docId) {
     if(docId) {
         const { data: doc } = await supabase.from('documents').select('*').eq('id', docId).single();
         if(doc) trackRecentView(doc);
     }
+
     let contentHtml = '<button onclick="hideModal()" style="float:right; border:none; background:transparent; font-size:1.5em; cursor:pointer">×</button>';
-    if (type.startsWith('image/')) contentHtml += `<img src="${url}" style="max-width:100%;"/>`;
-    else if (type === 'application/pdf') contentHtml += `<embed src="${url}" type="application/pdf" style="width:100%; height:60vh;" />`;
+    if (type.startsWith('image/')) contentHtml += `<img src="${url}" alt="Preview" class="preview-image" style="max-width:100%;"/>`;
+    else if (type === 'application/pdf') contentHtml += `<embed src="${url}" type="application/pdf" class="preview-pdf" style="width:100%; height:60vh;" />`;
     else contentHtml += `<p>Preview not available.</p><a href="${url}" target="_blank" download class="btn-primary">📥 Download File</a>`;
     
     if(docId) {
         contentHtml += `
-            <div style="margin-top:20px; border-top:1px solid #e2e8f0; padding-top:10px;">
+            <div class="comment-section" style="margin-top:20px; border-top:1px solid #e2e8f0; padding-top:10px;">
                 <h3>Q&A & Comments</h3>
-                <div id="comment-list" style="max-height: 150px; overflow-y:auto; margin-bottom: 1em;">Loading...</div>
+                <div id="comment-list" style="max-height: 150px; overflow-y:auto; margin-bottom: 1em;">Loading comments...</div>
                 <div style="display:flex; gap:0.5em;">
-                    <input id="new-comment-input" placeholder="Add a comment..." style="flex:1; padding:8px;" />
-                    <button class="btn-primary" onclick="postComment('${docId}')">Post</button>
+                    <input id="new-comment-input" placeholder="Add a comment..." style="margin:0; flex:1; padding:8px;" />
+                    <button class="btn-primary" onclick="postComment('${docId}')" style="margin:0;">Post</button>
                 </div>
-            </div>`;
+            </div>
+        `;
     }
     showModal(contentHtml, '#preview-modal');
     if(docId) loadComments(docId);
@@ -260,19 +291,24 @@ window.previewFile = async function(url, type, docId) {
 
 window.listBranches = async function() {
     const { data } = await supabase.from('branches').select('*').order('name');
-    let html = `<h2>Branches</h2><button onclick="createBranch()" class="btn-primary" style="margin-bottom: 1em; background-color: #28a745;">+ Add New Branch</button>`;
+    let html = `<h2>Branches</h2>`;
+    html += `<button onclick="createBranch()" class="btn-primary" style="margin-bottom: 1em; background-color: #28a745;">+ Add New Branch</button>`;
     html += data?.map(b => `
        <div class="branch-card" onclick="showBranch('${b.id}')" style="display:flex; justify-content:space-between; align-items:center;">
         <h3 style="margin:0;">${b.name}</h3>
-        <button onclick="deleteItem('branches', '${b.id}', '${b.name}', null, listBranches, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
+        <button onclick="deleteItem('branches', '${b.id}', '${b.name}', null, listBranches, event)" style="background:transparent; color:#e53e3e; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:1.2em;">🗑️</button>
        </div>`).join('') || '<p>No branches.</p>';
     document.getElementById('allBranches').innerHTML = html;
 }
 
 window.showBranch = async function(id) {
     const { data } = await supabase.from('branches').select('*').eq('id', id).single();
-    let html = `<button onclick="showDashboard('allBranches')" class="btn-action" style="margin-bottom: 1em;">⬅ Back</button>`;
-    html += `<h2>${data.name}</h2><button onclick="createSemester('${id}')" class="btn-primary" style="margin-bottom: 1em; background-color: #28a745;">+ Add Semester</button><div id="semesterList"></div>`;
+    currentBranch = data;
+    let html = `<button onclick="showDashboard('allBranches')" class="btn-action" style="margin-bottom: 1em;">⬅ Back to All Branches</button>`;
+    html += `<h2>${data.name}</h2>`;
+    html += `<button onclick="createSemester('${id}')" class="btn-primary" style="margin-bottom: 1em; background-color: #28a745;">+ Add Semester</button>`;
+    html += `<div id="semesterList"></div>`;
+    
     document.getElementById('branchDetail').innerHTML = html;
     showDashboard('branchDetail');
     
@@ -280,14 +316,18 @@ window.showBranch = async function(id) {
     document.getElementById('semesterList').innerHTML = sems?.map(s => `
         <div class="branch-card" onclick="showSemester('${s.id}')" style="display:flex; justify-content:space-between; align-items:center;">
             <h3 style="margin:0;">Sem ${s.semester_number}: ${s.name}</h3>
-            <button onclick="deleteItem('semesters', '${s.id}', 'Semester ${s.semester_number}', '${id}', showBranch, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
-        </div>`).join('');
+            <button onclick="deleteItem('semesters', '${s.id}', 'Semester ${s.semester_number}', '${id}', showBranch, event)" style="background:transparent; color:#e53e3e; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:1.2em;">🗑️</button>
+        </div>`).join('') || '';
 };
 
 window.showSemester = async function(id) {
     const { data: sem } = await supabase.from('semesters').select('*').eq('id', id).single();
-    let html = `<button onclick="showBranch('${sem.branch_id}')" class="btn-action" style="margin-bottom: 1em;">⬅ Back</button>`;
-    html += `<h2>${sem.name}</h2><button onclick="createSection('${id}')" class="btn-primary" style="margin-bottom: 1em; background-color: #28a745;">+ Add Section</button><div id="sectionList"></div>`;
+    currentSemester = sem;
+    let html = `<button onclick="showBranch('${sem.branch_id}')" class="btn-action" style="margin-bottom: 1em;">⬅ Back to Branch</button>`;
+    html += `<h2>${sem.name}</h2>`;
+    html += `<button onclick="createSection('${id}')" class="btn-primary" style="margin-bottom: 1em; background-color: #28a745;">+ Add Section</button>`;
+    html += `<div id="sectionList"></div>`;
+    
     document.getElementById('semesterDetail').innerHTML = html;
     showDashboard('semesterDetail');
     
@@ -295,14 +335,18 @@ window.showSemester = async function(id) {
     document.getElementById('sectionList').innerHTML = secs?.map(s => `
         <div class="branch-card" onclick="showSection('${s.id}')" style="display:flex; justify-content:space-between; align-items:center;">
             <h3 style="margin:0;">${s.name}</h3>
-            <button onclick="deleteItem('sections', '${s.id}', '${s.name}', '${id}', showSemester, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
-        </div>`).join('');
+            <button onclick="deleteItem('sections', '${s.id}', '${s.name}', '${id}', showSemester, event)" style="background:transparent; color:#e53e3e; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:1.2em;">🗑️</button>
+        </div>`).join('') || '';
 };
 
 window.showSection = async function(id) {
     const { data: sec } = await supabase.from('sections').select('*').eq('id', id).single();
-    let html = `<button onclick="showSemester('${sec.semester_id}')" class="btn-action" style="margin-bottom: 1em;">⬅ Back</button>`;
-    html += `<h2>${sec.name}</h2><button onclick="createSubject('${id}')" class="btn-primary" style="margin-bottom: 1em; background-color: #28a745;">+ Add Subject</button><div id="subjectList"></div>`;
+    currentSection = sec;
+    let html = `<button onclick="showSemester('${sec.semester_id}')" class="btn-action" style="margin-bottom: 1em;">⬅ Back to Semester</button>`;
+    html += `<h2>${sec.name}</h2>`;
+    html += `<button onclick="createSubject('${id}')" class="btn-primary" style="margin-bottom: 1em; background-color: #28a745;">+ Add Subject</button>`;
+    html += `<div id="subjectList"></div>`;
+    
     document.getElementById('sectionDetail').innerHTML = html;
     showDashboard('sectionDetail');
     
@@ -310,36 +354,42 @@ window.showSection = async function(id) {
     document.getElementById('subjectList').innerHTML = subs?.map(s => `
         <div class="branch-card" onclick="showSubject('${s.id}')" style="display:flex; justify-content:space-between; align-items:center;">
             <h3 style="margin:0;">${s.name}</h3>
-            <button onclick="deleteItem('subjects', '${s.id}', '${s.name}', '${id}', showSection, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
-        </div>`).join('');
+            <button onclick="deleteItem('subjects', '${s.id}', '${s.name}', '${id}', showSection, event)" style="background:transparent; color:#e53e3e; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:1.2em;">🗑️</button>
+        </div>`).join('') || '';
 };
 
 window.showSubject = async function(id) {
     const { data: sub } = await supabase.from('subjects').select('*').eq('id', id).single();
     currentSubject = sub;
-    let html = `<button onclick="showSection('${sub.section_id}')" class="btn-action" style="margin-bottom: 1em;">⬅ Back</button>`;
+    
+    let html = `<button onclick="showSection('${sub.section_id}')" class="btn-action" style="margin-bottom: 1em;">⬅ Back to Section</button>`;
     html += `<h2>${sub.name}</h2>
       <form onsubmit="uploadDocument(event)" style="margin-bottom: 2em; padding: 1em; border: 1px solid #e2e8f0; border-radius: 8px; background: #f7fafc;">
         <h3 style="margin-top:0;">Upload a Document</h3>
-        <input id="docTitle" placeholder="Document Title" required style="margin-bottom: 10px; width: 100%; padding: 8px;" />
-        <label style="font-weight: bold; font-size: 0.9em; display:block; margin-bottom: 5px;">Main File (PDF/Image): *</label>
+        <input id="docTitle" placeholder="Document Title (e.g., Chapter 1 Notes)" required style="margin-bottom: 10px; width: 100%; padding: 8px;" />
+        
+        <label style="font-weight: bold; font-size: 0.9em; display:block; margin-bottom: 5px;">Main File (PDF, Image, etc.): *</label>
         <input id="docFile" type="file" required style="margin-bottom: 15px; width: 100%;" />
+
         <label style="font-weight: bold; font-size: 0.9em; display:block; margin-bottom: 5px;">Thumbnail Image (Optional):</label>
         <input id="docThumb" type="file" accept="image/*" style="margin-bottom: 15px; width: 100%;" />
+        
         <button class="btn-primary" type="submit" style="width: 100%;">Upload</button>
       </form>
       <div id="documentList" style="margin-top: 1em; display: flex; flex-wrap: wrap; gap: 15px;"></div>`;
+      
     document.getElementById('subjectDetail').innerHTML = html;
     showDashboard('subjectDetail');
     loadDocuments(id);
 };
 
 // ==========================================
-// 6. UPLOADS (WITH THUMBNAILS)
+// 6. UPLOAD & LOAD DOCUMENTS (WITH THUMBNAILS)
 // ==========================================
 window.uploadDocument = async function(e) {
     e.preventDefault();
     if(!currentUser) return alert("Please login to upload.");
+    
     const title = document.getElementById('docTitle').value;
     const file = document.getElementById('docFile').files[0];
     const thumbFile = document.getElementById('docThumb').files[0];
@@ -358,36 +408,52 @@ window.uploadDocument = async function(e) {
         } else if (file.type.startsWith('image/')) {
             finalThumbUrl = fileUrl;
         } else {
-            finalThumbUrl = 'https://placehold.co/400x300/e2e8f0/4a5568?text=Document';
+            finalThumbUrl = 'https://placehold.co/400x300/e2e8f0/4a5568?text=Document\nNo+Thumbnail';
         }
         
         const { error } = await supabase.from('documents').insert([{
-            subject_id: currentSubject.id, title: title, file_url: fileUrl, file_type: file.type, 
-            file_size: file.size, thumbnail_url: finalThumbUrl, uploaded_by: currentUser.id, uploader_email: currentUser.email
+            subject_id: currentSubject.id, 
+            title: title,
+            file_url: fileUrl, 
+            file_type: file.type, 
+            file_size: file.size,
+            thumbnail_url: finalThumbUrl,
+            uploaded_by: currentUser.id,
+            uploader_email: currentUser.email
         }]);
+        
         if (error) throw error;
-        alert("Upload Success!"); showSubject(currentSubject.id); 
-    } catch(err) { alert("Upload failed!"); console.error("UPLOAD ERROR:", err); }
+
+        alert("Upload Success!");
+        showSubject(currentSubject.id); 
+    } catch(err) { 
+        alert("Upload failed! Check console."); 
+        console.error("UPLOAD ERROR:", err); 
+    }
 };
 
 window.loadDocuments = async function(subId) {
     const { data } = await supabase.from('documents').select('*, upvotes(id), bookmarks(id)').eq('subject_id', subId).order('created_at', {ascending: false});
     const list = document.getElementById('documentList');
+    
     list.innerHTML = data?.map(d => {
         const upvotes = d.upvotes ? d.upvotes.length : 0;
         const thumb = d.thumbnail_url || 'https://placehold.co/400x300/e2e8f0/4a5568?text=No+Thumbnail';
+        
         return `
-        <div class="branch-card" style="width: 250px; padding: 0; overflow: hidden; display: flex; flex-direction: column;">
-            <img src="${thumb}" style="width: 100%; height: 140px; object-fit: cover; border-bottom: 1px solid #e2e8f0; cursor: pointer;" onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')" />
+        <div class="branch-card" style="width: 250px; padding: 0; overflow: hidden; display: flex; flex-direction: column; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <img src="${thumb}" alt="Thumbnail" style="width: 100%; height: 140px; object-fit: cover; border-bottom: 1px solid #e2e8f0; cursor: pointer;" onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')" />
+            
             <div style="padding: 15px;">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 10px;">
-                    <h4 style="margin:0;">${d.title}</h4>
-                    <button onclick="deleteItem('documents', '${d.id}', '${d.title}', '${subId}', () => loadDocuments('${subId}'), event)" style="background:transparent; color:#e53e3e; border:none; cursor:pointer;">🗑️</button>
+                    <h4 style="margin:0; font-size: 1.1em; line-height: 1.3;">${d.title}</h4>
+                    <button onclick="deleteItem('documents', '${d.id}', '${d.title}', '${subId}', () => loadDocuments('${subId}'), event)" style="background:transparent; color:#e53e3e; border:none; cursor:pointer; font-size: 1.2em;">🗑️</button>
                 </div>
+                
                 <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                    <button onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')" class="btn-primary" style="flex: 1; padding: 5px;">👁️ Open</button>
-                    <button onclick="toggleUpvote('${d.id}')" class="btn-action" style="flex: 1; padding: 5px;">👍 (${upvotes})</button>
-                    <button onclick="toggleBookmark('${d.id}')" class="btn-action" style="flex: 1; padding: 5px;">🔖</button>
+                    <button onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')" class="btn-primary" style="flex: 1; padding: 5px; font-size: 0.9em;">👁️ Open</button>
+                    <button onclick="toggleUpvote('${d.id}')" class="btn-action" style="flex: 1; padding: 5px; font-size: 0.9em;">👍 (${upvotes})</button>
+                    <button onclick="toggleBookmark('${d.id}')" class="btn-action" style="flex: 1; padding: 5px; font-size: 0.9em;">🔖</button>
                 </div>
             </div>
         </div>`
@@ -401,70 +467,140 @@ window.myUploads = async function() {
 }
 
 // ==========================================
-// 7. ADMIN CREATION & DELETION
+// 7. ADMIN CREATION FUNCTIONS
 // ==========================================
 window.createBranch = async function() {
-    const pass = prompt("Enter Admin Code to create a Branch:"); if (pass !== ADMIN_CODE) return alert("Unauthorized.");
-    const name = prompt("Enter Branch Name:"); if (!name) return;
+    const pass = prompt("Enter Admin Code to create a Branch:");
+    if (pass !== ADMIN_CODE) return alert("Unauthorized or wrong code.");
+    
+    const name = prompt("Enter Branch Name (e.g., Computer Science):");
+    if (!name) return;
+    
     const { error } = await supabase.from('branches').insert([{ name: name }]);
-    if (error) alert("Error: " + error.message); else { alert("Created!"); listBranches(); }
+    if (error) alert("Error creating branch: " + error.message);
+    else { alert("Branch created!"); listBranches(); }
 };
+
 window.createSemester = async function(branchId) {
-    const pass = prompt("Enter Admin Code:"); if (pass !== ADMIN_CODE) return alert("Unauthorized.");
-    const num = prompt("Semester Number:"); const name = prompt("Semester Name:"); if (!num || !name) return;
+    const pass = prompt("Enter Admin Code to create a Semester:");
+    if (pass !== ADMIN_CODE) return alert("Unauthorized.");
+    
+    const num = prompt("Enter Semester Number (e.g., 1):");
+    const name = prompt("Enter Semester Name (e.g., Fall 2024):");
+    if (!num || !name) return;
+    
     const { error } = await supabase.from('semesters').insert([{ branch_id: branchId, semester_number: num, name: name }]);
-    if (error) alert("Error: " + error.message); else { alert("Created!"); showBranch(branchId); }
+    if (error) alert("Error: " + error.message);
+    else { alert("Semester created!"); showBranch(branchId); }
 };
+
 window.createSection = async function(semesterId) {
-    const pass = prompt("Enter Admin Code:"); if (pass !== ADMIN_CODE) return alert("Unauthorized.");
-    const name = prompt("Section Name:"); if (!name) return;
+    const pass = prompt("Enter Admin Code to create a Section:");
+    if (pass !== ADMIN_CODE) return alert("Unauthorized.");
+    
+    const name = prompt("Enter Section Name (e.g., Section A):");
+    if (!name) return;
+    
     const { error } = await supabase.from('sections').insert([{ semester_id: semesterId, name: name }]);
-    if (error) alert("Error: " + error.message); else { alert("Created!"); showSemester(semesterId); }
+    if (error) alert("Error: " + error.message);
+    else { alert("Section created!"); showSemester(semesterId); }
 };
+
 window.createSubject = async function(sectionId) {
-    const pass = prompt("Enter Admin Code:"); if (pass !== ADMIN_CODE) return alert("Unauthorized.");
-    const name = prompt("Subject Name:"); if (!name) return;
+    const pass = prompt("Enter Admin Code to create a Subject:");
+    if (pass !== ADMIN_CODE) return alert("Unauthorized.");
+    
+    const name = prompt("Enter Subject Name (e.g., Quantum Physics):");
+    if (!name) return;
+    
     const { error } = await supabase.from('subjects').insert([{ section_id: sectionId, name: name }]);
-    if (error) alert("Error: " + error.message); else { alert("Created!"); showSection(sectionId); }
-};
-window.deleteItem = async function(table, id, name, parentId, refreshFunction, event) {
-    event.stopPropagation(); 
-    const pass = prompt(`Enter Admin Code to delete "${name}":`); if (pass !== ADMIN_CODE) return alert("Unauthorized.");
-    if (!confirm(`🚨 WARNING! Are you SURE you want to delete "${name}"?`)) return;
-    const { error } = await supabase.from(table).delete().eq('id', id);
-    if (error) alert("Error deleting: " + error.message); else { alert("Deleted!"); if (parentId) refreshFunction(parentId); else refreshFunction(); }
+    if (error) alert("Error: " + error.message);
+    else { alert("Subject created!"); showSection(sectionId); }
 };
 
 // ==========================================
-// 8. LIVE SEARCH FEATURE
+// 8. ADMIN DELETE FUNCTIONS
+// ==========================================
+window.deleteItem = async function(table, id, name, parentId, refreshFunction, event) {
+    event.stopPropagation(); 
+    
+    const pass = prompt(`Enter Admin Code to delete "${name}":`);
+    if (pass !== ADMIN_CODE) return alert("Unauthorized or wrong code.");
+    
+    const confirmDelete = confirm(`🚨 WARNING! Are you SURE you want to delete "${name}"? This cannot be undone!`);
+    if (!confirmDelete) return;
+    
+    const { error } = await supabase.from(table).delete().eq('id', id);
+    if (error) {
+        alert("Error deleting: " + error.message);
+    } else {
+        alert("🗑️ Deleted successfully!");
+        if (parentId) refreshFunction(parentId);
+        else refreshFunction(); 
+    }
+};
+
+// ==========================================
+// 9. LIVE SEARCH FEATURE
 // ==========================================
 window.showSearchPage = function() {
     document.getElementById('searchSection').innerHTML = `
         <h2>Search Notes</h2>
-        <input type="text" id="searchInput" placeholder="Start typing a title..." style="width: 100%; padding: 15px; font-size: 1.1em; border: 2px solid #3182ce; border-radius: 8px; margin-bottom: 20px;" onkeyup="performLiveSearch(this.value)" />
-        <div id="searchResults" style="display: flex; flex-wrap: wrap; gap: 15px;"><p style="color: #718096;">Type at least 2 letters...</p></div>`;
+        <input type="text" id="searchInput" placeholder="Start typing a document title (e.g., 'Quantum')..." 
+               style="width: 100%; padding: 15px; font-size: 1.1em; border: 2px solid #3182ce; border-radius: 8px; margin-bottom: 20px;"
+               onkeyup="performLiveSearch(this.value)" />
+               
+        <div id="searchResults" style="display: flex; flex-wrap: wrap; gap: 15px;">
+            <p style="color: #718096;">Type at least 2 letters to start searching...</p>
+        </div>
+    `;
 }
 
 window.performLiveSearch = async function(query) {
     const resultsContainer = document.getElementById('searchResults');
-    if (query.length < 2) { resultsContainer.innerHTML = '<p>Type at least 2 letters...</p>'; return; }
+    
+    if (query.length < 2) {
+        resultsContainer.innerHTML = '<p style="color: #718096;">Type at least 2 letters to start searching...</p>';
+        return;
+    }
+
     resultsContainer.innerHTML = '<p>Searching...</p>';
 
-    const { data, error } = await supabase.from('documents').select('*, upvotes(id), bookmarks(id)').ilike('title', `%${query}%`).order('created_at', { ascending: false });
-    if (error) return resultsContainer.innerHTML = `<p style="color: red;">Search error: ${error.message}</p>`;
-    if (!data || data.length === 0) return resultsContainer.innerHTML = `<div><h3>No notes found for "${query}"</h3></div>`;
+    const { data, error } = await supabase.from('documents')
+        .select('*, upvotes(id), bookmarks(id)')
+        .ilike('title', `%${query}%`)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        resultsContainer.innerHTML = `<p style="color: red;">Search error: ${error.message}</p>`;
+        return;
+    }
+
+    if (!data || data.length === 0) {
+        resultsContainer.innerHTML = `
+            <div style="text-align: center; width: 100%; padding: 20px;">
+                <h3 style="color: #4a5568;">No notes found for "${query}"</h3>
+                <p style="color: #718096;">Try a different keyword or check your spelling.</p>
+            </div>`;
+        return;
+    }
 
     resultsContainer.innerHTML = data.map(d => {
         const upvotes = d.upvotes ? d.upvotes.length : 0;
         const thumb = d.thumbnail_url || 'https://placehold.co/400x300/e2e8f0/4a5568?text=No+Thumbnail';
+        
         return `
-        <div class="branch-card" style="width: 250px; padding: 0; overflow: hidden; display: flex; flex-direction: column;">
-            <img src="${thumb}" style="width: 100%; height: 140px; object-fit: cover;" onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')" />
+        <div class="branch-card" style="width: 250px; padding: 0; overflow: hidden; display: flex; flex-direction: column; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <img src="${thumb}" style="width: 100%; height: 140px; object-fit: cover; border-bottom: 1px solid #e2e8f0; cursor: pointer;" onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')" />
             <div style="padding: 15px;">
-                <h4 style="margin:0; margin-bottom: 10px;">${d.title}</h4>
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 10px;">
+                    <h4 style="margin:0; font-size: 1.1em; line-height: 1.3;">${d.title}</h4>
+                    <button onclick="deleteItem('documents', '${d.id}', '${d.title}', null, () => performLiveSearch('${query}'), event)" style="background:transparent; color:#e53e3e; border:none; cursor:pointer;">🗑️</button>
+                </div>
                 <div style="display: flex; gap: 5px; flex-wrap: wrap;">
                     <button onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')" class="btn-primary" style="flex: 1; padding: 5px;">👁️ Open</button>
                     <button onclick="toggleUpvote('${d.id}')" class="btn-action" style="flex: 1; padding: 5px;">👍 (${upvotes})</button>
+                    <button onclick="toggleBookmark('${d.id}')" class="btn-action" style="flex: 1; padding: 5px;">🔖</button>
                 </div>
             </div>
         </div>`
