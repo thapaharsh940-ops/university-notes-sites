@@ -18,7 +18,19 @@ function toggleSidebar() {
     sidebar.classList.toggle("closed");
 }
 
-window.onclick = e => { if (e.target.classList.contains('modal-bg')) hideModal(); };
+window.onclick = e => { 
+    // 1. Close Modals if clicking the background
+    if (e.target.classList.contains('modal-bg')) hideModal(); 
+    
+    // 2. Close Sidebar if clicking outside of it (the "red area")
+    if (window.innerWidth <= 768) {
+        if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && (!mobileBtn || !mobileBtn.contains(e.target))) {
+            sidebar.classList.remove('open');
+            sidebar.classList.add('closed');
+        }
+    }
+};
+
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideModal(); });
 
 function showModal(html, which = "#auth-modal") {
@@ -100,8 +112,13 @@ window.showDashboard = function(section) {
     if (section === 'myUploads') myUploads();
     if (section === 'savedNotes') loadBookmarks();
     if (section === 'searchSection') showSearchPage();
-}
 
+    // NEW: Automatically close the sidebar on mobile after clicking a link!
+    if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
+        sidebar.classList.remove('open');
+        sidebar.classList.add('closed');
+    }
+}
 window.updateDashboardStats = async function() {
     const { count: total } = await supabase.from("documents").select("*", { count: "exact", head: true });
     
