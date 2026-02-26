@@ -1,5 +1,3 @@
-
-
 const ADMIN_CODE = "sahil12345"; 
 
 let currentUser = null;
@@ -7,26 +5,20 @@ let currentBranch = null; let currentSemester = null;
 let currentSection = null; let currentSubject = null;
 
 // ==========================================
-// 1. UI, MODAL & MOBILE SETUP
+// 1. UI & MODAL SETUP
 // ==========================================
 const sidebar = document.getElementById('sidebar');
 const mobileBtn = document.getElementById('mobile-menu-btn');
-if (mobileBtn) mobileBtn.onclick = () => {
+const sidebarToggle = document.getElementById('sidebar-toggle');
+if (mobileBtn) mobileBtn.onclick = toggleSidebar;
+if (sidebarToggle) sidebarToggle.onclick = toggleSidebar;
+
+function toggleSidebar() {
     sidebar.classList.toggle("open");
     sidebar.classList.toggle("closed");
-};
+}
 
-// Close modal OR sidebar if clicking outside (The Red Area Fix)
-window.onclick = e => { 
-    if (e.target.classList.contains('modal-bg')) hideModal(); 
-    
-    if (window.innerWidth <= 768) {
-        if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && (!mobileBtn || !mobileBtn.contains(e.target))) {
-            sidebar.classList.remove('open');
-            sidebar.classList.add('closed');
-        }
-    }
-};
+window.onclick = e => { if (e.target.classList.contains('modal-bg')) hideModal(); };
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideModal(); });
 
 function showModal(html, which = "#auth-modal") {
@@ -48,9 +40,9 @@ function showAuthModal(tab = 'login') {
       <div style="text-align:center">
       <h2>${tab === 'login' ? "Login" : "Sign Up"}</h2>
       <form onsubmit="${tab === 'login' ? 'doLogin(event)' : 'doSignup(event)'}">
-        <input id="auth-email" type="email" placeholder="Email" required style="width:100%; padding:10px; margin-bottom:10px;"><br>
-        <input id="auth-pass" type="password" placeholder="Password" required style="width:100%; padding:10px; margin-bottom:15px;"><br>
-        <button class="btn-primary" type="submit" style="width:100%;">${tab === 'login' ? "Login" : "Sign Up"}</button>
+        <input id="auth-email" type="email" placeholder="Email" required><br>
+        <input id="auth-pass" type="password" placeholder="Password" required><br>
+        <button class="btn-primary" type="submit">${tab === 'login' ? "Login" : "Sign Up"}</button>
       </form>
       </div>
     `);
@@ -65,9 +57,9 @@ function setUserInfo(user) {
     navItems.forEach(item => {
         if (item.textContent.includes('Logout') || item.textContent.includes('Login')) {
             if (user) {
-                item.innerHTML = '🚪 Logout'; item.onclick = logout; item.style.color = "#ef4444";
+                item.innerHTML = '🚪 Logout'; item.onclick = logout; item.classList.add('danger');
             } else {
-                item.innerHTML = '🔑 Login'; item.onclick = () => showAuthModal('login'); item.style.color = "#9ca3af";
+                item.innerHTML = '🔑 Login'; item.onclick = () => showAuthModal('login'); item.classList.remove('danger');
             }
         }
     });
@@ -87,7 +79,9 @@ window.doLogin = async function(e) {
     if (error) alert("Login failed: " + error.message); else { setUserInfo(data.user); hideModal(); showDashboard('overview'); }
 }
 
-window.logout = async function() { await supabase.auth.signOut(); setUserInfo(null); showDashboard('overview'); }
+window.logout = async function() { 
+    await supabase.auth.signOut(); setUserInfo(null); showDashboard('overview'); 
+}
 
 supabase.auth.getSession().then(({ data: { session } }) => {
     setUserInfo(session?.user || null);
@@ -95,30 +89,17 @@ supabase.auth.getSession().then(({ data: { session } }) => {
 });
 
 // ==========================================
-// 3. NAVIGATION & DASHBOARD (With active color fix)
+// 3. NAVIGATION & BEAUTIFUL DASHBOARD
 // ==========================================
 window.showDashboard = function(section) {
     document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
     document.getElementById(section).classList.add('active');
     
-    // Highlight the active menu button
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-        const clickAction = item.getAttribute('onclick') || '';
-        if (clickAction.includes(section)) item.classList.add('active');
-    });
-
     if (section === 'overview') { updateDashboardStats(); loadRecentlyViewed(); }
     if (section === 'allBranches') listBranches();
     if (section === 'myUploads') myUploads();
     if (section === 'savedNotes') loadBookmarks();
     if (section === 'searchSection') showSearchPage();
-
-    // Auto-close sidebar on mobile
-    if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
-        sidebar.classList.remove('open');
-        sidebar.classList.add('closed');
-    }
 }
 
 window.updateDashboardStats = async function() {
@@ -135,12 +116,35 @@ window.updateDashboardStats = async function() {
     const overviewSection = document.getElementById('overview');
     if(overviewSection) {
         overviewSection.innerHTML = `
-            <h2 style="margin-bottom: 20px; color: #2d3748;">Platform Overview</h2>
-            
+
+
+      
+             <h2 style="margin-bottom: 20px; color: #2d3748;">Platform Overview</h2>
+            <div class="mobile-header">
+    <h2 style="margin: 0; font-size: 1.2em;">🎓 University Notes</h2>
+    <button id="mobile-menu-btn" class="hamburger">☰</button>
+</div>
+
+<div id="sidebar" class="sidebar closed">
+    <div style="padding: 20px; font-size: 1.5em; font-weight: bold; color: white; border-bottom: 1px solid #374151;">
+        Menu
+    </div>
+    <div class="nav-item" onclick="showDashboard('overview')">📊 Dashboard</div>
+    <div class="nav-item" onclick="showDashboard('allBranches')">📁 Browse</div>
+    <div class="nav-item" onclick="showDashboard('searchSection')">🔍 Search</div>
+    <div class="nav-item" onclick="showDashboard('myUploads')">📤 My Uploads</div>
+    <div class="nav-item" onclick="showDashboard('savedNotes')">🔖 Saved Notes</div>
+    
+    <div style="margin-top: auto; padding: 20px;">
+        <div id="user-bar" style="color: #9ca3af; margin-bottom: 10px; font-size: 0.9em;">Not logged in</div>
+        <div class="nav-item login-btn" onclick="showAuthModal('login')">🔑 Login</div>
+    </div>
+</div>
             <div style="display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap;">
                 <div style="flex: 1; min-width: 250px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 15px rgba(0,0,0,0.1); text-align: center;">
                     <h3 style="margin: 0; font-size: 1.2em; opacity: 0.9;">Total Documents Uploaded</h3>
                     <p style="font-size: 3.5em; font-weight: bold; margin: 10px 0 0 0;">${total || 0}</p>
+                    <small style="opacity: 0.8;">From all students combined</small>
                 </div>
             </div>
 
@@ -149,8 +153,12 @@ window.updateDashboardStats = async function() {
                 ${sortedLeaderboard.length > 0 ? 
                     sortedLeaderboard.map((user, i) => `
                     <li style="padding: 15px 20px; border-bottom: 1px solid #edf2f7; display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-weight: bold; font-size: 1.1em;">#${i+1} &nbsp; ${user[0].split('@')[0]}</span> 
-                        <span style="background: #ebf4ff; color: #3182ce; padding: 5px 10px; border-radius: 20px; font-weight: bold;">📄 ${user[1]} uploads</span>
+                        <span style="font-weight: bold; font-size: 1.1em; color: ${i === 0 ? '#d69e2e' : '#4a5568'};">
+                            #${i+1} &nbsp; ${user[0].split('@')[0]}
+                        </span> 
+                        <span style="background: #ebf4ff; color: #3182ce; padding: 5px 10px; border-radius: 20px; font-weight: bold;">
+                            📄 ${user[1]} uploads
+                        </span>
                     </li>`).join('') 
                     : '<li style="padding: 20px; text-align: center; color: #a0aec0;">No contributors yet. Be the first!</li>'
                 }
@@ -166,7 +174,7 @@ window.updateDashboardStats = async function() {
 }
 
 // ==========================================
-// 4. STUDENT FEATURES (RECENT, UPVOTE, BOOKMARK, COMMENT)
+// 4. NEW FEATURES (RECENT, UPVOTE, BOOKMARK, COMMENT)
 // ==========================================
 function trackRecentView(doc) {
     let recent = JSON.parse(localStorage.getItem('recentViews') || '[]');
@@ -198,8 +206,13 @@ window.toggleUpvote = async function(docId) {
     if(data && data.length > 0) await supabase.from('upvotes').delete().eq('id', data[0].id);
     else await supabase.from('upvotes').insert([{ user_id: currentUser.id, document_id: docId }]);
     
-    if(document.getElementById('subjectDetail').classList.contains('active') && currentSubject) loadDocuments(currentSubject.id);
-    else if(document.getElementById('searchSection').classList.contains('active')) performLiveSearch(document.getElementById('searchInput').value);
+    // Refresh current view
+    if(document.getElementById('subjectDetail').classList.contains('active') && currentSubject) {
+        loadDocuments(currentSubject.id);
+    } else if (document.getElementById('searchSection').classList.contains('active')) {
+        const query = document.getElementById('searchInput').value;
+        if(query) performLiveSearch(query);
+    }
 }
 
 window.toggleBookmark = async function(docId) {
@@ -213,8 +226,12 @@ window.toggleBookmark = async function(docId) {
         alert("Added to Saved Notes 🔖");
     }
     
-    if(document.getElementById('subjectDetail').classList.contains('active') && currentSubject) loadDocuments(currentSubject.id);
-    else if(document.getElementById('searchSection').classList.contains('active')) performLiveSearch(document.getElementById('searchInput').value);
+    if(document.getElementById('subjectDetail').classList.contains('active') && currentSubject) {
+        loadDocuments(currentSubject.id);
+    } else if (document.getElementById('searchSection').classList.contains('active')) {
+        const query = document.getElementById('searchInput').value;
+        if(query) performLiveSearch(query);
+    }
     loadBookmarks();
 }
 
@@ -242,7 +259,7 @@ async function loadComments(docId) {
     const { data } = await supabase.from('comments').select('*').eq('document_id', docId).order('created_at', { ascending: true });
     let html = data?.map(c => `
         <div class="comment-box">
-            <div class="comment-author" style="font-weight:bold; font-size:0.9em;">${c.user_email.split('@')[0]} <small style="color:gray">${new Date(c.created_at).toLocaleDateString()}</small></div>
+            <div class="comment-author">${c.user_email.split('@')[0]} <small style="color:gray">${new Date(c.created_at).toLocaleDateString()}</small></div>
             <div>${c.content}</div>
         </div>
     `).join('') || '<p><small>No comments yet.</small></p>';
@@ -275,11 +292,11 @@ window.previewFile = async function(url, type, docId) {
     
     if(docId) {
         contentHtml += `
-            <div class="comment-section" style="margin-top:20px; border-top:1px solid #e2e8f0; padding-top:10px;">
+            <div class="comment-section">
                 <h3>Q&A & Comments</h3>
                 <div id="comment-list" style="max-height: 150px; overflow-y:auto; margin-bottom: 1em;">Loading comments...</div>
                 <div style="display:flex; gap:0.5em;">
-                    <input id="new-comment-input" placeholder="Add a comment..." style="margin:0; flex:1; padding:8px;" />
+                    <input id="new-comment-input" placeholder="Add a comment..." style="margin:0; flex:1;" />
                     <button class="btn-primary" onclick="postComment('${docId}')" style="margin:0;">Post</button>
                 </div>
             </div>
@@ -296,7 +313,7 @@ window.listBranches = async function() {
     html += data?.map(b => `
        <div class="branch-card" onclick="showBranch('${b.id}')" style="display:flex; justify-content:space-between; align-items:center;">
         <h3 style="margin:0;">${b.name}</h3>
-        <button onclick="deleteItem('branches', '${b.id}', '${b.name}', null, listBranches, event)" style="background:transparent; color:#e53e3e; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:1.2em;">🗑️</button>
+        <button onclick="deleteItem('branches', '${b.id}', '${b.name}', null, listBranches, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
        </div>`).join('') || '<p>No branches.</p>';
     document.getElementById('allBranches').innerHTML = html;
 }
@@ -316,7 +333,7 @@ window.showBranch = async function(id) {
     document.getElementById('semesterList').innerHTML = sems?.map(s => `
         <div class="branch-card" onclick="showSemester('${s.id}')" style="display:flex; justify-content:space-between; align-items:center;">
             <h3 style="margin:0;">Sem ${s.semester_number}: ${s.name}</h3>
-            <button onclick="deleteItem('semesters', '${s.id}', 'Semester ${s.semester_number}', '${id}', showBranch, event)" style="background:transparent; color:#e53e3e; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:1.2em;">🗑️</button>
+            <button onclick="deleteItem('semesters', '${s.id}', 'Semester ${s.semester_number}', '${id}', showBranch, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
         </div>`).join('') || '';
 };
 
@@ -335,7 +352,7 @@ window.showSemester = async function(id) {
     document.getElementById('sectionList').innerHTML = secs?.map(s => `
         <div class="branch-card" onclick="showSection('${s.id}')" style="display:flex; justify-content:space-between; align-items:center;">
             <h3 style="margin:0;">${s.name}</h3>
-            <button onclick="deleteItem('sections', '${s.id}', '${s.name}', '${id}', showSemester, event)" style="background:transparent; color:#e53e3e; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:1.2em;">🗑️</button>
+            <button onclick="deleteItem('sections', '${s.id}', '${s.name}', '${id}', showSemester, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
         </div>`).join('') || '';
 };
 
@@ -354,7 +371,7 @@ window.showSection = async function(id) {
     document.getElementById('subjectList').innerHTML = subs?.map(s => `
         <div class="branch-card" onclick="showSubject('${s.id}')" style="display:flex; justify-content:space-between; align-items:center;">
             <h3 style="margin:0;">${s.name}</h3>
-            <button onclick="deleteItem('subjects', '${s.id}', '${s.name}', '${id}', showSection, event)" style="background:transparent; color:#e53e3e; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:1.2em;">🗑️</button>
+            <button onclick="deleteItem('subjects', '${s.id}', '${s.name}', '${id}', showSection, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
         </div>`).join('') || '';
 };
 
@@ -395,10 +412,12 @@ window.uploadDocument = async function(e) {
     const thumbFile = document.getElementById('docThumb').files[0];
     
     try {
+        // 1. Upload Main File
         const fileName = `${Date.now()}_${file.name}`;
         await supabase.storage.from('university-notes-files').upload(fileName, file);
         const { data: { publicUrl: fileUrl } } = supabase.storage.from('university-notes-files').getPublicUrl(fileName);
         
+        // 2. Handle Thumbnail Logic
         let finalThumbUrl = null;
         if (thumbFile) {
             const thumbName = `thumb_${Date.now()}_${thumbFile.name}`;
@@ -411,6 +430,7 @@ window.uploadDocument = async function(e) {
             finalThumbUrl = 'https://placehold.co/400x300/e2e8f0/4a5568?text=Document\nNo+Thumbnail';
         }
         
+        // 3. Save to Database
         const { error } = await supabase.from('documents').insert([{
             subject_id: currentSubject.id, 
             title: title,
