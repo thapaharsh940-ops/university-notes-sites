@@ -48,6 +48,11 @@ function hideModal() {
 // 2. AUTHENTICATION
 // ==========================================
 function showAuthModal(tab = 'login') {
+    // Force sidebar to close on mobile
+    if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
+        sidebar.classList.remove('open');
+        sidebar.classList.add('closed');
+    }
     showModal(`
       <div style="text-align:center">
       <h2>${tab === 'login' ? "Login" : "Sign Up"}</h2>
