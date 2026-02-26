@@ -6,9 +6,7 @@ body {
     color: #2d3748;
 }
 
-/* =========================================
-   PROFESSIONAL SIDEBAR (BLACK & COLORFUL)
-========================================= */
+/* SIDEBAR (BLACK & COLORFUL) */
 .sidebar {
     width: 260px;
     background-color: #111827; 
@@ -30,20 +28,18 @@ body {
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
-    border-left: 4px solid transparent;
+    border-left: 4px solid transparent; 
 }
 
 .nav-item:hover, .nav-item.active {
-    background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%);
+    background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%); 
     color: #ffffff;
     border-left: 4px solid #ffffff;
 }
 
-/* =========================================
-   MOBILE HEADER 
-========================================= */
+/* MOBILE HEADER */
 .mobile-header {
-    display: none; 
+    display: none; /* Hidden on Desktop */
     background-color: #000000; 
     color: white;
     padding: 15px 20px;
@@ -64,9 +60,7 @@ body {
     padding: 0;
 }
 
-/* =========================================
-   MAIN CONTENT & CARDS
-========================================= */
+/* MAIN CONTENT & CARDS */
 .main-content {
     margin-left: 260px;
     padding: 30px;
@@ -75,7 +69,6 @@ body {
 
 .dashboard-section { display: none; }
 .dashboard-section.active { display: block; animation: fadeIn 0.3s; }
-
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 .branch-card {
@@ -85,39 +78,22 @@ body {
     box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     margin-bottom: 15px;
     cursor: pointer;
-    transition: transform 0.2s;
     border: 1px solid #e2e8f0;
 }
-.branch-card:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.1); }
 
-/* Buttons & Inputs */
 .btn-primary { background: #3182ce; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
 .btn-primary:hover { background: #2b6cb0; }
 .btn-action { background: #edf2f7; color: #4a5568; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
 .btn-action:hover { background: #e2e8f0; }
 
-input, select {
-    box-sizing: border-box;
-    border: 1px solid #cbd5e0;
-    border-radius: 6px;
-    font-family: inherit;
-}
+input, select { box-sizing: border-box; border: 1px solid #cbd5e0; border-radius: 6px; font-family: inherit; }
 
-/* Modals */
-.modal-bg {
-    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-    background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center;
-}
+.modal-bg { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center; }
 .modal-bg.active { display: flex; }
-.modal-content {
-    background: white; padding: 30px; border-radius: 12px; max-width: 400px; width: 90%;
-    display: none; max-height: 90vh; overflow-y: auto;
-}
+.modal-content { background: white; padding: 30px; border-radius: 12px; max-width: 400px; width: 90%; display: none; max-height: 90vh; overflow-y: auto; }
 .modal-content.active { display: block; }
 
-/* =========================================
-   MOBILE RESPONSIVENESS (PHONES ONLY)
-========================================= */
+/* MOBILE RESPONSIVENESS */
 @media (max-width: 768px) {
     .mobile-header { display: flex; }
     .sidebar.closed { transform: translateX(-100%); }
