@@ -161,6 +161,12 @@ textarea { min-height: 100px; resize: vertical; }
     box-shadow: 0 2px 10px rgba(0,0,0,0.5);
 }
 
+@media (max-width: 768px) {
+    .mobile-header {
+        display: flex; /* Only turns on for mobile phones */
+    }
+    /* ... other mobile css ... */
+}
 .hamburger {
     font-size: 28px;
     background: transparent;
