@@ -1,6 +1,6 @@
 // ==========================================
 // SECTION 1: GLOBAL VARIABLES & ADMIN SETUP
-// Change your admin code here, and track which user/page is active.
+// Change your admin code here, track which user/page is active, and manage the Batch filter.
 // ==========================================
 const ADMIN_CODE = "sahil12345"; 
 
@@ -9,6 +9,24 @@ let currentBranch = null;
 let currentSemester = null;
 let currentSection = null; 
 let currentSubject = null;
+
+// Global Batch Filter Logic
+let globalBatch = localStorage.getItem('globalBatch') || 'All';
+
+window.updateGlobalBatch = function(val) {
+    globalBatch = val;
+    localStorage.setItem('globalBatch', val);
+    // Refresh the document view instantly if we are looking at a subject
+    if (document.getElementById('subjectDetail').classList.contains('active') && currentSubject) {
+        loadDocuments(currentSubject.id);
+    }
+};
+
+// Set the dropdown to the saved batch on page load
+document.addEventListener('DOMContentLoaded', () => {
+    const select = document.getElementById('batchSelect');
+    if(select) select.value = globalBatch;
+});
 
 // ==========================================
 // SECTION 2: SIDEBAR & MOBILE MENU CONTROLS
@@ -26,10 +44,8 @@ function toggleSidebar() {
     sidebar.classList.toggle("closed");
 }
 
-// Closes sidebar or modals when clicking outside of them
 window.onclick = e => { 
     if (e.target.classList.contains('modal-bg')) hideModal(); 
-    
     if (window.innerWidth <= 768) {
         if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && (!mobileBtn || !mobileBtn.contains(e.target))) {
             sidebar.classList.remove('open');
@@ -60,7 +76,6 @@ function hideModal() {
 // Handles Supabase user accounts, the login form UI, and user status.
 // ==========================================
 function showAuthModal(tab = 'login') {
-    // Force sidebar to close on mobile when clicking login
     if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
         sidebar.classList.remove('open');
         sidebar.classList.add('closed');
@@ -82,7 +97,6 @@ function setUserInfo(user) {
     const userBar = document.getElementById('user-bar');
     if (userBar) userBar.textContent = user ? ("👤 " + user.email) : 'Not logged in';
 
-    // Update Sidebar links based on login status
     const navItems = document.querySelectorAll('.nav-item');
     navItems.forEach(item => {
         if (item.textContent.includes('Logout') || item.textContent.includes('Login')) {
@@ -113,7 +127,6 @@ window.logout = async function() {
     await supabase.auth.signOut(); setUserInfo(null); showDashboard('overview'); 
 }
 
-// Automatically check if user is already logged in on page load
 supabase.auth.getSession().then(({ data: { session } }) => {
     setUserInfo(session?.user || null);
     showDashboard('overview');
@@ -124,18 +137,15 @@ supabase.auth.getSession().then(({ data: { session } }) => {
 // Controls which page/section is currently visible on the screen.
 // ==========================================
 window.showDashboard = function(section) {
-    // Hide all sections, then show the requested one
     document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
     document.getElementById(section).classList.add('active');
     
-    // Load specific data depending on which page we opened
     if (section === 'overview') { updateDashboardStats(); loadRecentlyViewed(); }
     if (section === 'allBranches') listBranches();
     if (section === 'myUploads') myUploads();
     if (section === 'savedNotes') loadBookmarks();
     if (section === 'searchSection') showSearchPage();
 
-    // Automatically close the sidebar on mobile after clicking a link
     if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
         sidebar.classList.remove('open');
         sidebar.classList.add('closed');
@@ -154,7 +164,7 @@ window.updateDashboardStats = async function() {
     if(docs) {
         let counts = {};
         docs.forEach(d => { if(d.uploader_email) counts[d.uploader_email] = (counts[d.uploader_email] || 0) + 1; });
-        sortedLeaderboard = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 5); // Top 5
+        sortedLeaderboard = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 5); 
     }
 
     const overviewSection = document.getElementById('overview');
@@ -201,9 +211,9 @@ window.updateDashboardStats = async function() {
 // ==========================================
 function trackRecentView(doc) {
     let recent = JSON.parse(localStorage.getItem('recentViews') || '[]');
-    recent = recent.filter(d => d.id !== doc.id); // Remove if already exists
+    recent = recent.filter(d => d.id !== doc.id); 
     recent.unshift({ id: doc.id, title: doc.title, file_url: doc.file_url, file_type: doc.file_type });
-    if(recent.length > 4) recent.pop(); // Keep only top 4
+    if(recent.length > 4) recent.pop(); 
     localStorage.setItem('recentViews', JSON.stringify(recent));
     loadRecentlyViewed();
 }
@@ -334,8 +344,8 @@ window.previewFile = async function(url, type, docId) {
 }
 
 // ==========================================
-// SECTION 10: BROWSE HIERARCHY (BRANCH -> SEM -> SEC -> SUB)
-// Controls the drill-down navigation when browsing folders.
+// SECTION 10: BROWSE HIERARCHY (BRANCH -> SEM -> GROUP -> SUB)
+// Controls the drill-down navigation and sets up the upload form with Batch input.
 // ==========================================
 window.listBranches = async function() {
     const { data } = await supabase.from('branches').select('*').order('name');
@@ -373,7 +383,7 @@ window.showSemester = async function(id) {
     currentSemester = sem;
     let html = `<button onclick="showBranch('${sem.branch_id}')" class="btn-action" style="margin-bottom: 1em;">⬅ Back to Branch</button>`;
     html += `<h2>${sem.name}</h2>`;
-    html += `<button onclick="createSection('${id}')" class="btn-primary" style="margin-bottom: 1em; background-color: #28a745;">+ Add Section</button>`;
+    html += `<button onclick="createSection('${id}')" class="btn-primary" style="margin-bottom: 1em; background-color: #28a745;">+ Add Group</button>`;
     html += `<div id="sectionList"></div>`;
     
     document.getElementById('semesterDetail').innerHTML = html;
@@ -382,7 +392,7 @@ window.showSemester = async function(id) {
     const { data: secs } = await supabase.from('sections').select('*').eq('semester_id', id);
     document.getElementById('sectionList').innerHTML = secs?.map(s => `
         <div class="branch-card" onclick="showSection('${s.id}')" style="display:flex; justify-content:space-between; align-items:center;">
-            <h3 style="margin:0;">${s.name}</h3>
+            <h3 style="margin:0;">Group: ${s.name}</h3>
             <button onclick="deleteItem('sections', '${s.id}', '${s.name}', '${id}', showSemester, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
         </div>`).join('') || '';
 };
@@ -391,7 +401,7 @@ window.showSection = async function(id) {
     const { data: sec } = await supabase.from('sections').select('*').eq('id', id).single();
     currentSection = sec;
     let html = `<button onclick="showSemester('${sec.semester_id}')" class="btn-action" style="margin-bottom: 1em;">⬅ Back to Semester</button>`;
-    html += `<h2>${sec.name}</h2>`;
+    html += `<h2>Group: ${sec.name}</h2>`;
     html += `<button onclick="createSubject('${id}')" class="btn-primary" style="margin-bottom: 1em; background-color: #28a745;">+ Add Subject</button>`;
     html += `<div id="subjectList"></div>`;
     
@@ -410,12 +420,15 @@ window.showSubject = async function(id) {
     const { data: sub } = await supabase.from('subjects').select('*').eq('id', id).single();
     currentSubject = sub;
     
-    let html = `<button onclick="showSection('${sub.section_id}')" class="btn-action" style="margin-bottom: 1em;">⬅ Back to Section</button>`;
+    let html = `<button onclick="showSection('${sub.section_id}')" class="btn-action" style="margin-bottom: 1em;">⬅ Back to Group</button>`;
     html += `<h2>${sub.name}</h2>
       <form onsubmit="uploadDocument(event)" style="margin-bottom: 2em; padding: 1em; border: 1px solid #e2e8f0; border-radius: 8px; background: #f7fafc;">
         <h3 style="margin-top:0;">Upload a Document</h3>
         <input id="docTitle" placeholder="Document Title (e.g., Chapter 1 Notes)" required style="margin-bottom: 10px; width: 100%; padding: 8px;" />
         
+        <label style="font-weight: bold; font-size: 0.9em; display:block; margin-bottom: 5px;">Batch / Year (Optional):</label>
+        <input id="docYear" placeholder="e.g., 2025" style="margin-bottom: 15px; width: 100%; padding: 8px; border: 1px solid #cbd5e0; border-radius: 4px;" />
+
         <label style="font-weight: bold; font-size: 0.9em; display:block; margin-bottom: 5px;">Main File (PDF, Image, etc.): *</label>
         <input id="docFile" type="file" required style="margin-bottom: 15px; width: 100%;" />
 
@@ -428,7 +441,7 @@ window.showSubject = async function(id) {
       
     document.getElementById('subjectDetail').innerHTML = html;
     showDashboard('subjectDetail');
-    loadDocuments(id); // Calls Section 12 to populate documents
+    loadDocuments(id); 
 };
 
 // ==========================================
@@ -440,17 +453,18 @@ window.uploadDocument = async function(e) {
     if(!currentUser) return alert("Please login to upload.");
     
     const title = document.getElementById('docTitle').value;
+    const batchYear = document.getElementById('docYear').value; // Get the batch year
     const file = document.getElementById('docFile').files[0];
     const thumbFile = document.getElementById('docThumb').files[0];
     
     try {
-        // Step 1: Upload Main File - Clean filename to prevent broken URLs
+        // Step 1: Upload Main File
         const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
         const fileName = `${Date.now()}_${cleanFileName}`;
         await supabase.storage.from('university-notes-files').upload(fileName, file);
         const { data: { publicUrl: fileUrl } } = supabase.storage.from('university-notes-files').getPublicUrl(fileName);
         
-        // Step 2: Handle Thumbnail Logic - Fallbacks for missing thumbnails
+        // Step 2: Handle Thumbnail
         let finalThumbUrl = null;
         if (thumbFile) {
             const cleanThumbName = thumbFile.name.replace(/[^a-zA-Z0-9.]/g, '_');
@@ -459,15 +473,16 @@ window.uploadDocument = async function(e) {
             const { data: { publicUrl: uploadedThumb } } = supabase.storage.from('university-notes-files').getPublicUrl(thumbName);
             finalThumbUrl = uploadedThumb;
         } else if (file.type.startsWith('image/')) {
-            finalThumbUrl = fileUrl; // Use image itself as thumbnail
+            finalThumbUrl = fileUrl; 
         } else {
-            finalThumbUrl = 'https://placehold.co/400x300/e2e8f0/4a5568?text=Document\nNo+Thumbnail'; // Default placeholder
+            finalThumbUrl = 'https://placehold.co/400x300/e2e8f0/4a5568?text=Document\nNo+Thumbnail'; 
         }
         
-        // Step 3: Save metadata to Supabase Database
+        // Step 3: Save metadata to Supabase Database (including the Batch Year)
         const { error } = await supabase.from('documents').insert([{
             subject_id: currentSubject.id, 
             title: title,
+            batch_year: batchYear || null, 
             file_url: fileUrl, 
             file_type: file.type, 
             file_size: file.size,
@@ -488,21 +503,30 @@ window.uploadDocument = async function(e) {
 
 // ==========================================
 // SECTION 12: LOAD DOCUMENTS & RENDER CARDS
-// Controls how documents look when browsing a subject.
+// Controls how documents look, and filters them based on the global Batch setting.
 // ==========================================
 window.loadDocuments = async function(subId) {
-    const { data } = await supabase.from('documents').select('*, upvotes(id), bookmarks(id)').eq('subject_id', subId).order('created_at', {ascending: false});
+    let query = supabase.from('documents').select('*, upvotes(id), bookmarks(id)').eq('subject_id', subId).order('created_at', {ascending: false});
+    
+    // Apply the Global Batch Filter if a specific year is selected
+    if (globalBatch && globalBatch !== 'All') {
+        query = query.eq('batch_year', globalBatch);
+    }
+    
+    const { data } = await query;
     const list = document.getElementById('documentList');
     
     list.innerHTML = data?.map(d => {
         const upvotes = d.upvotes ? d.upvotes.length : 0;
         const thumb = d.thumbnail_url || 'https://placehold.co/400x300/e2e8f0/4a5568?text=No+Thumbnail';
+        const yearBadge = d.batch_year ? `<span style="background: #edf2f7; color: #4a5568; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; margin-bottom: 8px; display: inline-block;">🎓 ${d.batch_year} Batch</span>` : '';
         
         return `
         <div class="branch-card" style="width: 250px; padding: 0; overflow: hidden; display: flex; flex-direction: column; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <img src="${thumb}" alt="Thumbnail" style="width: 100%; height: 140px; object-fit: cover; border-bottom: 1px solid #e2e8f0; cursor: pointer;" onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')" />
             
             <div style="padding: 15px;">
+                ${yearBadge}
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 10px;">
                     <h4 style="margin:0; font-size: 1.1em; line-height: 1.3;">${d.title}</h4>
                     <button onclick="deleteItem('documents', '${d.id}', '${d.title}', '${subId}', () => loadDocuments('${subId}'), event)" style="background:transparent; color:#e53e3e; border:none; cursor:pointer; font-size: 1.2em;">🗑️</button>
@@ -515,7 +539,7 @@ window.loadDocuments = async function(subId) {
                 </div>
             </div>
         </div>`
-    }).join('') || '<p style="width: 100%;">No documents uploaded yet.</p>';
+    }).join('') || '<p style="width: 100%;">No documents found for this selection.</p>';
 }
 
 // ==========================================
@@ -535,12 +559,14 @@ window.myUploads = async function() {
     
     html += data?.map(d => {
         const thumb = d.thumbnail_url || 'https://placehold.co/400x300/e2e8f0/4a5568?text=No+Thumbnail';
-        
+        const yearBadge = d.batch_year ? `<span style="background: #edf2f7; color: #4a5568; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; margin-bottom: 8px; display: inline-block;">🎓 ${d.batch_year} Batch</span>` : '';
+
         return `
         <div class="branch-card" style="width: 250px; padding: 0; overflow: hidden; display: flex; flex-direction: column; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <img src="${thumb}" alt="Thumbnail" style="width: 100%; height: 140px; object-fit: cover; border-bottom: 1px solid #e2e8f0; cursor: pointer;" onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')" />
             
             <div style="padding: 15px;">
+                ${yearBadge}
                 <h4 style="margin:0 0 10px 0; font-size: 1.1em; line-height: 1.3;">${d.title}</h4>
                 
                 <div style="display: flex; gap: 5px; flex-wrap: wrap;">
@@ -628,15 +654,16 @@ window.createSemester = async function(branchId) {
 };
 
 window.createSection = async function(semesterId) {
-    const pass = prompt("Enter Admin Code to create a Section:");
+    const pass = prompt("Enter Admin Code to create a Group:");
     if (pass !== ADMIN_CODE) return alert("Unauthorized.");
     
-    const name = prompt("Enter Section Name (e.g., Section A):");
+    const name = prompt("Enter Group Name (e.g., Group A):");
     if (!name) return;
     
+    // Kept the table name 'sections' to prevent breaking old data
     const { error } = await supabase.from('sections').insert([{ semester_id: semesterId, name: name }]);
     if (error) alert("Error: " + error.message);
-    else { alert("Section created!"); showSemester(semesterId); }
+    else { alert("Group created!"); showSemester(semesterId); }
 };
 
 window.createSubject = async function(sectionId) {
@@ -701,10 +728,17 @@ window.performLiveSearch = async function(query) {
 
     resultsContainer.innerHTML = '<p>Searching...</p>';
 
-    const { data, error } = await supabase.from('documents')
+    let dbQuery = supabase.from('documents')
         .select('*, upvotes(id), bookmarks(id)')
         .ilike('title', `%${query}%`)
         .order('created_at', { ascending: false });
+
+    // Apply the Global Batch Filter to search results too!
+    if (globalBatch && globalBatch !== 'All') {
+        dbQuery = dbQuery.eq('batch_year', globalBatch);
+    }
+
+    const { data, error } = await dbQuery;
 
     if (error) {
         resultsContainer.innerHTML = `<p style="color: red;">Search error: ${error.message}</p>`;
@@ -723,11 +757,13 @@ window.performLiveSearch = async function(query) {
     resultsContainer.innerHTML = data.map(d => {
         const upvotes = d.upvotes ? d.upvotes.length : 0;
         const thumb = d.thumbnail_url || 'https://placehold.co/400x300/e2e8f0/4a5568?text=No+Thumbnail';
-        
+        const yearBadge = d.batch_year ? `<span style="background: #edf2f7; color: #4a5568; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; margin-bottom: 8px; display: inline-block;">🎓 ${d.batch_year} Batch</span>` : '';
+
         return `
         <div class="branch-card" style="width: 250px; padding: 0; overflow: hidden; display: flex; flex-direction: column; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <img src="${thumb}" style="width: 100%; height: 140px; object-fit: cover; border-bottom: 1px solid #e2e8f0; cursor: pointer;" onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')" />
             <div style="padding: 15px;">
+                ${yearBadge}
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 10px;">
                     <h4 style="margin:0; font-size: 1.1em; line-height: 1.3;">${d.title}</h4>
                     <button onclick="deleteItem('documents', '${d.id}', '${d.title}', null, () => performLiveSearch('${query}'), event)" style="background:transparent; color:#e53e3e; border:none; cursor:pointer;">🗑️</button>
