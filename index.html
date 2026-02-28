@@ -18,8 +18,12 @@
             <span class="logo">📘 UniNotes</span>
         </div>
         
-        <ul class="nav-list" style="display:flex; flex-direction:column; height: 100%; margin: 0; padding-top: 15px;">
-            <li class="nav-item" onclick="showDashboard('overview')">📊 Dashboard</li>
+        <ul class="nav-list" style="display:flex; flex-direction:column; height: 100%; margin: 0; padding-top: 10px;">
+            
+            <div style="padding: 10px 20px; font-size: 0.75em; color: #6b7280; text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">
+                Notes System
+            </div>
+            <li class="nav-item" onclick="showDashboard('overview')">📊 Notes Dashboard</li>
             <li class="nav-item" onclick="showDashboard('allBranches')">📚 Browse Notes</li>
             <li class="nav-item" onclick="showDashboard('searchSection')">🔍 Search Notes</li>
             <li class="nav-item" onclick="showDashboard('myUploads')">📤 My Uploads</li>
@@ -28,7 +32,8 @@
             <div style="margin-top: 15px; padding: 10px 20px; font-size: 0.75em; color: #6b7280; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; border-top: 1px solid #374151; padding-top: 20px;">
                 Workstation
             </div>
-            <li class="nav-item" onclick="showDashboard('workstationHome')" style="color: #48bb78; font-weight: bold;">💻 Assignments</li>
+            <li class="nav-item" onclick="showDashboard('wsOverview')" style="color: #48bb78; font-weight: bold;">💻 WS Dashboard</li>
+            <li class="nav-item" onclick="showDashboard('workstationHome')">📂 Assignments</li>
             
             <div style="margin-top: auto; padding: 20px;">
                 <div id="user-bar" style="color: #9ca3af; margin-bottom: 10px; font-size: 0.9em;">Not logged in</div>
@@ -58,8 +63,15 @@
                 <div id="savedNotesList"></div>
             </section>
 
+            <section id="wsOverview" class="dashboard-section"></section>
             <section id="workstationHome" class="dashboard-section"></section>
-            <section id="workstationDashboard" class="dashboard-section"></section>
+            
+            <section id="wsBranchDetail" class="dashboard-section"></section>
+            <section id="wsBatchDetail" class="dashboard-section"></section>
+            <section id="wsSemesterDetail" class="dashboard-section"></section>
+            <section id="wsSectionDetail" class="dashboard-section"></section>
+            <section id="wsSubjectDetail" class="dashboard-section"></section>
+
             <section id="workstationUpload" class="dashboard-section"></section>
         </main>
     </div>
