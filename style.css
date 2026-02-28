@@ -42,10 +42,9 @@ header { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.07); display: flex
 .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
 .dash-card-premium { padding: 25px; border-radius: 12px; color: white; box-shadow: 0 10px 15px rgba(0,0,0,0.1); position: relative; overflow: hidden; }
 .dash-card-premium h3 { margin: 0; font-size: 1.1em; opacity: 0.9; font-weight: 500; }
-.dash-card-premium .number { font-size: 3em; font-weight: bold; margin: 10px 0 0 0; }
+.dash-card-premium .number { font-size: 3.5em; font-weight: bold; margin: 10px 0 0 0; }
 .bg-purple { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
 .bg-green { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: #064e3b; }
-.bg-orange { background: linear-gradient(135deg, #f6d365 0%, #fda085 100%); color: #78350f; }
 
 .activity-list { background: #fff; border-radius: 8px; padding: 1rem; list-style: none; box-shadow: 0 1.5px 5px rgba(0,0,0,0.07); }
 .activity-list li { padding: 0.8em 0; border-bottom: 1px solid #e2e8f0; }
@@ -97,6 +96,6 @@ header { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.07); display: flex
     .main-content { margin-left: 0 !important; padding: 15px; width: 100%; box-sizing: border-box; }
     .dashboard-section { padding: 1rem; }
     .branch-card { width: 100% !important; margin-bottom: 15px; }
-    #overview > div { flex-direction: column; }
+    .dash-grid { flex-direction: column; display: flex; }
     .modal-content { padding: 1.5rem; width: 95%; }
 }
