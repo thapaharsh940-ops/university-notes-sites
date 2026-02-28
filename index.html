@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
     <div class="mobile-header">
         <h2 style="margin: 0; font-size: 1.2em;">🎓 University Notes</h2>
         <button id="mobile-menu-btn" class="hamburger">☰</button>
@@ -32,8 +31,7 @@
             <div style="margin-top: 15px; padding: 10px 20px; font-size: 0.75em; color: #6b7280; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; border-top: 1px solid #374151; padding-top: 20px;">
                 Workstation
             </div>
-            <li class="nav-item" onclick="showDashboard('wsOverview')" style="color: #48bb78; font-weight: bold;">💻 WS Dashboard</li>
-            <li class="nav-item" onclick="showDashboard('workstationHome')">📂 Assignments</li>
+            <li class="nav-item" onclick="showDashboard('workstationHome')" style="color: #48bb78; font-weight: bold;">📝 Assignments</li>
             
             <div style="margin-top: auto; padding: 20px;">
                 <div id="user-bar" style="color: #9ca3af; margin-bottom: 10px; font-size: 0.9em;">Not logged in</div>
@@ -58,15 +56,11 @@
             <section id="subjectDetail" class="dashboard-section"></section>
             <section id="searchSection" class="dashboard-section"></section>
             <section id="myUploads" class="dashboard-section"></section>
-            <section id="savedNotes" class="dashboard-section">
-                <h2>🔖 Saved Notes</h2>
-                <div id="savedNotesList"></div>
-            </section>
+            <section id="savedNotes" class="dashboard-section"><h2>🔖 Saved Notes</h2><div id="savedNotesList"></div></section>
 
-            <section id="wsOverview" class="dashboard-section"></section>
             <section id="workstationHome" class="dashboard-section"></section>
-            
             <section id="wsBranchDetail" class="dashboard-section"></section>
+            
             <section id="wsBatchDetail" class="dashboard-section"></section>
             <section id="wsSemesterDetail" class="dashboard-section"></section>
             <section id="wsSectionDetail" class="dashboard-section"></section>
@@ -79,6 +73,5 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabaseClient.js"></script>
     <script src="app.js"></script>
-
 </body>
 </html>
