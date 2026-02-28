@@ -14,18 +14,33 @@ let currentSubject = null;
 let globalBatch = localStorage.getItem('globalBatch') || 'All';
 
 window.updateGlobalBatch = function(val) {
-    globalBatch = val;
-    localStorage.setItem('globalBatch', val);
+    // If user clears the search bar, treat it as "All Batches"
+    globalBatch = (!val || val.trim() === '') ? 'All' : val;
+    localStorage.setItem('globalBatch', globalBatch);
+    
     // Refresh the document view instantly if we are looking at a subject
     if (document.getElementById('subjectDetail').classList.contains('active') && currentSubject) {
         loadDocuments(currentSubject.id);
     }
 };
 
-// Set the dropdown to the saved batch on page load
+// Auto-generate years 1900-2100 for the searchable dropdowns
 document.addEventListener('DOMContentLoaded', () => {
-    const select = document.getElementById('batchSelect');
-    if(select) select.value = globalBatch;
+    const datalist = document.getElementById('yearList');
+    if(datalist) {
+        // Generates years backwards so 2026 is near the top!
+        for (let year = 2100; year >= 1900; year--) {
+            let option = document.createElement('option');
+            option.value = year;
+            datalist.appendChild(option);
+        }
+    }
+    
+    // Set sidebar input to saved value
+    const batchInput = document.getElementById('batchSelect');
+    if(batchInput && globalBatch !== 'All') {
+        batchInput.value = globalBatch;
+    }
 });
 
 // ==========================================
@@ -343,10 +358,9 @@ window.previewFile = async function(url, type, docId) {
     if(docId) loadComments(docId);
 }
 
-
 // ==========================================
 // SECTION 10: BROWSE HIERARCHY (BRANCH -> SEM -> GROUP -> SUB)
-// Controls the drill-down navigation and sets up the upload form.
+// Controls the drill-down navigation and sets up the upload form with search datalist.
 // ==========================================
 window.listBranches = async function() {
     const { data } = await supabase.from('branches').select('*').order('name');
@@ -440,7 +454,7 @@ window.showSubject = async function(id) {
         <input id="docTitle" placeholder="Document Title (e.g., Chapter 1 Notes)" required style="margin-bottom: 10px; width: 100%; padding: 8px;" />
         
         <label style="font-weight: bold; font-size: 0.9em; display:block; margin-bottom: 5px;">Batch / Year (Optional):</label>
-        <input id="docYear" placeholder="e.g., 2025" style="margin-bottom: 15px; width: 100%; padding: 8px; border: 1px solid #cbd5e0; border-radius: 4px;" />
+        <input id="docYear" type="number" list="yearList" placeholder="Search or type year (e.g., 2025)" style="margin-bottom: 15px; width: 100%; padding: 8px; border: 1px solid #cbd5e0; border-radius: 4px;" />
 
         <label style="font-weight: bold; font-size: 0.9em; display:block; margin-bottom: 5px;">Main File (PDF, Image, etc.): *</label>
         <input id="docFile" type="file" required style="margin-bottom: 15px; width: 100%;" />
@@ -466,18 +480,16 @@ window.uploadDocument = async function(e) {
     if(!currentUser) return alert("Please login to upload.");
     
     const title = document.getElementById('docTitle').value;
-    const batchYear = document.getElementById('docYear').value; // Get the batch year
+    const batchYear = document.getElementById('docYear').value; 
     const file = document.getElementById('docFile').files[0];
     const thumbFile = document.getElementById('docThumb').files[0];
     
     try {
-        // Step 1: Upload Main File
         const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
         const fileName = `${Date.now()}_${cleanFileName}`;
         await supabase.storage.from('university-notes-files').upload(fileName, file);
         const { data: { publicUrl: fileUrl } } = supabase.storage.from('university-notes-files').getPublicUrl(fileName);
         
-        // Step 2: Handle Thumbnail
         let finalThumbUrl = null;
         if (thumbFile) {
             const cleanThumbName = thumbFile.name.replace(/[^a-zA-Z0-9.]/g, '_');
@@ -491,7 +503,6 @@ window.uploadDocument = async function(e) {
             finalThumbUrl = 'https://placehold.co/400x300/e2e8f0/4a5568?text=Document\nNo+Thumbnail'; 
         }
         
-        // Step 3: Save metadata to Supabase Database (including the Batch Year)
         const { error } = await supabase.from('documents').insert([{
             subject_id: currentSubject.id, 
             title: title,
@@ -521,7 +532,6 @@ window.uploadDocument = async function(e) {
 window.loadDocuments = async function(subId) {
     let query = supabase.from('documents').select('*, upvotes(id), bookmarks(id)').eq('subject_id', subId).order('created_at', {ascending: false});
     
-    // Apply the Global Batch Filter if a specific year is selected
     if (globalBatch && globalBatch !== 'All') {
         query = query.eq('batch_year', globalBatch);
     }
@@ -673,7 +683,6 @@ window.createSection = async function(semesterId) {
     const name = prompt("Enter Group Name (e.g., Group A):");
     if (!name) return;
     
-    // Kept the table name 'sections' to prevent breaking old data
     const { error } = await supabase.from('sections').insert([{ semester_id: semesterId, name: name }]);
     if (error) alert("Error: " + error.message);
     else { alert("Group created!"); showSemester(semesterId); }
@@ -696,23 +705,19 @@ window.createSubject = async function(sectionId) {
 // Functions requiring the ADMIN_CODE to edit or delete hierarchy folders.
 // ==========================================
 window.editItem = async function(table, id, currentName, parentId, refreshFunction, event) {
-    event.stopPropagation(); // Prevents clicking into the folder
+    event.stopPropagation(); 
     
     const pass = prompt(`Enter Admin Code to edit "${currentName}":`);
     if (pass !== ADMIN_CODE) return alert("Unauthorized or wrong code.");
     
     const newName = prompt(`Enter a new name for "${currentName}":`, currentName);
-    
-    // If they click cancel or didn't change anything, do nothing
     if (!newName || newName === currentName) return; 
     
     const { error } = await supabase.from(table).update({ name: newName }).eq('id', id);
-    
     if (error) {
         alert("Error updating: " + error.message);
     } else {
         alert("✅ Updated successfully!");
-        // Refresh the current view to show the new name
         if (parentId) refreshFunction(parentId);
         else refreshFunction(); 
     }
@@ -769,7 +774,6 @@ window.performLiveSearch = async function(query) {
         .ilike('title', `%${query}%`)
         .order('created_at', { ascending: false });
 
-    // Apply the Global Batch Filter to search results too!
     if (globalBatch && globalBatch !== 'All') {
         dbQuery = dbQuery.eq('batch_year', globalBatch);
     }
