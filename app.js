@@ -1,15 +1,23 @@
+// ==========================================
+// SECTION 1: GLOBAL VARIABLES & ADMIN SETUP
+// Change your admin code here, and track which user/page is active.
+// ==========================================
 const ADMIN_CODE = "sahil12345"; 
 
 let currentUser = null;
-let currentBranch = null; let currentSemester = null;
-let currentSection = null; let currentSubject = null;
+let currentBranch = null; 
+let currentSemester = null;
+let currentSection = null; 
+let currentSubject = null;
 
-// ========================================
-// 1. UI & MODAL SETUP
+// ==========================================
+// SECTION 2: SIDEBAR & MOBILE MENU CONTROLS
+// Change how the sidebar opens, closes, and behaves on mobile devices.
 // ==========================================
 const sidebar = document.getElementById('sidebar');
 const mobileBtn = document.getElementById('mobile-menu-btn');
 const sidebarToggle = document.getElementById('sidebar-toggle');
+
 if (mobileBtn) mobileBtn.onclick = toggleSidebar;
 if (sidebarToggle) sidebarToggle.onclick = toggleSidebar;
 
@@ -18,11 +26,10 @@ function toggleSidebar() {
     sidebar.classList.toggle("closed");
 }
 
+// Closes sidebar or modals when clicking outside of them
 window.onclick = e => { 
-    // 1. Close Modals if clicking the background
     if (e.target.classList.contains('modal-bg')) hideModal(); 
     
-    // 2. Close Sidebar if clicking outside of it (the "red area")
     if (window.innerWidth <= 768) {
         if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && (!mobileBtn || !mobileBtn.contains(e.target))) {
             sidebar.classList.remove('open');
@@ -33,6 +40,10 @@ window.onclick = e => {
 
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideModal(); });
 
+// ==========================================
+// SECTION 3: MODAL (POPUP) MANAGEMENT
+// Controls how the login screens and document preview screens pop up.
+// ==========================================
 function showModal(html, which = "#auth-modal") {
     document.getElementById('modal-bg').classList.add('active');
     document.querySelector(which).innerHTML = html;
@@ -45,10 +56,11 @@ function hideModal() {
 }
 
 // ==========================================
-// 2. AUTHENTICATION
+// SECTION 4: AUTHENTICATION (LOGIN & SIGNUP)
+// Handles Supabase user accounts, the login form UI, and user status.
 // ==========================================
 function showAuthModal(tab = 'login') {
-    // Force sidebar to close on mobile
+    // Force sidebar to close on mobile when clicking login
     if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
         sidebar.classList.remove('open');
         sidebar.classList.add('closed');
@@ -70,6 +82,7 @@ function setUserInfo(user) {
     const userBar = document.getElementById('user-bar');
     if (userBar) userBar.textContent = user ? ("👤 " + user.email) : 'Not logged in';
 
+    // Update Sidebar links based on login status
     const navItems = document.querySelectorAll('.nav-item');
     navItems.forEach(item => {
         if (item.textContent.includes('Logout') || item.textContent.includes('Login')) {
@@ -100,30 +113,39 @@ window.logout = async function() {
     await supabase.auth.signOut(); setUserInfo(null); showDashboard('overview'); 
 }
 
+// Automatically check if user is already logged in on page load
 supabase.auth.getSession().then(({ data: { session } }) => {
     setUserInfo(session?.user || null);
     showDashboard('overview');
 });
 
 // ==========================================
-// 3. NAVIGATION & BEAUTIFUL DASHBOARD
+// SECTION 5: NAVIGATION & ROUTING
+// Controls which page/section is currently visible on the screen.
 // ==========================================
 window.showDashboard = function(section) {
+    // Hide all sections, then show the requested one
     document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
     document.getElementById(section).classList.add('active');
     
+    // Load specific data depending on which page we opened
     if (section === 'overview') { updateDashboardStats(); loadRecentlyViewed(); }
     if (section === 'allBranches') listBranches();
     if (section === 'myUploads') myUploads();
     if (section === 'savedNotes') loadBookmarks();
     if (section === 'searchSection') showSearchPage();
 
-    // NEW: Automatically close the sidebar on mobile after clicking a link!
+    // Automatically close the sidebar on mobile after clicking a link
     if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
         sidebar.classList.remove('open');
         sidebar.classList.add('closed');
     }
 }
+
+// ==========================================
+// SECTION 6: DASHBOARD STATS & LEADERBOARD
+// Fetches the total document count and calculates top contributors.
+// ==========================================
 window.updateDashboardStats = async function() {
     const { count: total } = await supabase.from("documents").select("*", { count: "exact", head: true });
     
@@ -132,7 +154,7 @@ window.updateDashboardStats = async function() {
     if(docs) {
         let counts = {};
         docs.forEach(d => { if(d.uploader_email) counts[d.uploader_email] = (counts[d.uploader_email] || 0) + 1; });
-        sortedLeaderboard = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 5);
+        sortedLeaderboard = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 5); // Top 5
     }
 
     const overviewSection = document.getElementById('overview');
@@ -174,13 +196,14 @@ window.updateDashboardStats = async function() {
 }
 
 // ==========================================
-// 4. NEW FEATURES (RECENT, UPVOTE, BOOKMARK, COMMENT)
+// SECTION 7: RECENT VIEWS TRACKING
+// Saves the last 4 clicked documents to the user's browser local storage.
 // ==========================================
 function trackRecentView(doc) {
     let recent = JSON.parse(localStorage.getItem('recentViews') || '[]');
-    recent = recent.filter(d => d.id !== doc.id);
+    recent = recent.filter(d => d.id !== doc.id); // Remove if already exists
     recent.unshift({ id: doc.id, title: doc.title, file_url: doc.file_url, file_type: doc.file_type });
-    if(recent.length > 4) recent.pop();
+    if(recent.length > 4) recent.pop(); // Keep only top 4
     localStorage.setItem('recentViews', JSON.stringify(recent));
     loadRecentlyViewed();
 }
@@ -200,13 +223,16 @@ function loadRecentlyViewed() {
     `).join('');
 }
 
+// ==========================================
+// SECTION 8: SOCIAL FEATURES (UPVOTE, BOOKMARK, COMMENT)
+// Handles liking, saving, and chatting on documents.
+// ==========================================
 window.toggleUpvote = async function(docId) {
     if(!currentUser) return alert("Please login to upvote.");
     const { data } = await supabase.from('upvotes').select('*').eq('user_id', currentUser.id).eq('document_id', docId);
     if(data && data.length > 0) await supabase.from('upvotes').delete().eq('id', data[0].id);
     else await supabase.from('upvotes').insert([{ user_id: currentUser.id, document_id: docId }]);
     
-    // Refresh current view
     if(document.getElementById('subjectDetail').classList.contains('active') && currentSubject) {
         loadDocuments(currentSubject.id);
     } else if (document.getElementById('searchSection').classList.contains('active')) {
@@ -277,7 +303,8 @@ window.postComment = async function(docId) {
 }
 
 // ==========================================
-// 5. BROWSE & PREVIEW (WITH ADMIN TRASH CANS)
+// SECTION 9: FILE PREVIEW MANAGER
+// Opens images/PDFs in a modal, or triggers a download if unsupported.
 // ==========================================
 window.previewFile = async function(url, type, docId) {
     if(docId) {
@@ -306,6 +333,10 @@ window.previewFile = async function(url, type, docId) {
     if(docId) loadComments(docId);
 }
 
+// ==========================================
+// SECTION 10: BROWSE HIERARCHY (BRANCH -> SEM -> SEC -> SUB)
+// Controls the drill-down navigation when browsing folders.
+// ==========================================
 window.listBranches = async function() {
     const { data } = await supabase.from('branches').select('*').order('name');
     let html = `<h2>Branches</h2>`;
@@ -397,11 +428,12 @@ window.showSubject = async function(id) {
       
     document.getElementById('subjectDetail').innerHTML = html;
     showDashboard('subjectDetail');
-    loadDocuments(id);
+    loadDocuments(id); // Calls Section 12 to populate documents
 };
 
 // ==========================================
-// 6. UPLOAD & LOAD DOCUMENTS (WITH THUMBNAILS)
+// SECTION 11: DOCUMENT UPLOAD LOGIC
+// Controls file sanitization, Supabase Storage uploads, and database inserts.
 // ==========================================
 window.uploadDocument = async function(e) {
     e.preventDefault();
@@ -412,25 +444,27 @@ window.uploadDocument = async function(e) {
     const thumbFile = document.getElementById('docThumb').files[0];
     
     try {
-        // 1. Upload Main File
-        const fileName = `${Date.now()}_${file.name}`;
+        // Step 1: Upload Main File - Clean filename to prevent broken URLs
+        const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+        const fileName = `${Date.now()}_${cleanFileName}`;
         await supabase.storage.from('university-notes-files').upload(fileName, file);
         const { data: { publicUrl: fileUrl } } = supabase.storage.from('university-notes-files').getPublicUrl(fileName);
         
-        // 2. Handle Thumbnail Logic
+        // Step 2: Handle Thumbnail Logic - Fallbacks for missing thumbnails
         let finalThumbUrl = null;
         if (thumbFile) {
-            const thumbName = `thumb_${Date.now()}_${thumbFile.name}`;
+            const cleanThumbName = thumbFile.name.replace(/[^a-zA-Z0-9.]/g, '_');
+            const thumbName = `thumb_${Date.now()}_${cleanThumbName}`;
             await supabase.storage.from('university-notes-files').upload(thumbName, thumbFile);
             const { data: { publicUrl: uploadedThumb } } = supabase.storage.from('university-notes-files').getPublicUrl(thumbName);
             finalThumbUrl = uploadedThumb;
         } else if (file.type.startsWith('image/')) {
-            finalThumbUrl = fileUrl;
+            finalThumbUrl = fileUrl; // Use image itself as thumbnail
         } else {
-            finalThumbUrl = 'https://placehold.co/400x300/e2e8f0/4a5568?text=Document\nNo+Thumbnail';
+            finalThumbUrl = 'https://placehold.co/400x300/e2e8f0/4a5568?text=Document\nNo+Thumbnail'; // Default placeholder
         }
         
-        // 3. Save to Database
+        // Step 3: Save metadata to Supabase Database
         const { error } = await supabase.from('documents').insert([{
             subject_id: currentSubject.id, 
             title: title,
@@ -452,6 +486,10 @@ window.uploadDocument = async function(e) {
     }
 };
 
+// ==========================================
+// SECTION 12: LOAD DOCUMENTS & RENDER CARDS
+// Controls how documents look when browsing a subject.
+// ==========================================
 window.loadDocuments = async function(subId) {
     const { data } = await supabase.from('documents').select('*, upvotes(id), bookmarks(id)').eq('subject_id', subId).order('created_at', {ascending: false});
     const list = document.getElementById('documentList');
@@ -480,14 +518,89 @@ window.loadDocuments = async function(subId) {
     }).join('') || '<p style="width: 100%;">No documents uploaded yet.</p>';
 }
 
+// ==========================================
+// SECTION 13: USER SPECIFIC ACTIONS (MY UPLOADS, EDIT, DELETE)
+// Renders the My Uploads page and handles editing/deleting user-owned content.
+// ==========================================
 window.myUploads = async function() {
-    if(!currentUser) return;
-    const { data } = await supabase.from('documents').select('*').eq('uploaded_by', currentUser.id);
-    document.getElementById('myUploads').innerHTML = `<h2>My Uploads</h2>` + (data?.map(d => `<div class="branch-card"><h4>${d.title}</h4></div>`).join('') || '<p>No uploads yet.</p>');
+    if(!currentUser) {
+        document.getElementById('myUploads').innerHTML = `<p>Please <span class="link" onclick="showAuthModal('login')">login</span> to view your uploads.</p>`;
+        return;
+    }
+
+    const { data } = await supabase.from('documents').select('*').eq('uploaded_by', currentUser.id).order('created_at', {ascending: false});
+    
+    let html = `<h2>My Uploads</h2>`;
+    html += `<div style="display: flex; flex-wrap: wrap; gap: 15px;">`;
+    
+    html += data?.map(d => {
+        const thumb = d.thumbnail_url || 'https://placehold.co/400x300/e2e8f0/4a5568?text=No+Thumbnail';
+        
+        return `
+        <div class="branch-card" style="width: 250px; padding: 0; overflow: hidden; display: flex; flex-direction: column; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <img src="${thumb}" alt="Thumbnail" style="width: 100%; height: 140px; object-fit: cover; border-bottom: 1px solid #e2e8f0; cursor: pointer;" onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')" />
+            
+            <div style="padding: 15px;">
+                <h4 style="margin:0 0 10px 0; font-size: 1.1em; line-height: 1.3;">${d.title}</h4>
+                
+                <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                    <button onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')" class="btn-primary" style="flex: 1; padding: 5px; font-size: 0.9em; margin: 0;">👁️ View</button>
+                    <button onclick="editMyDocument('${d.id}', '${d.title}', null, event)" class="btn-action" style="flex: 1; padding: 5px; font-size: 0.9em; margin: 0; color: #3182ce;">✏️ Edit</button>
+                    <button onclick="deleteMyDocument('${d.id}', '${d.title}', null, event)" class="btn-action" style="flex: 1; padding: 5px; font-size: 0.9em; margin: 0; color: #e53e3e;">🗑️ Delete</button>
+                </div>
+            </div>
+        </div>`
+    }).join('') || '<p style="width: 100%;">You haven\'t uploaded any documents yet.</p>';
+    
+    html += `</div>`;
+    document.getElementById('myUploads').innerHTML = html;
 }
 
+window.editMyDocument = async function(docId, oldTitle, subId, event) {
+    event.stopPropagation();
+    if(!currentUser) return alert("Please login to edit.");
+
+    const newTitle = prompt("Enter a new title for this document:", oldTitle);
+    if(!newTitle || newTitle === oldTitle) return;
+
+    const { error } = await supabase.from('documents')
+        .update({ title: newTitle })
+        .eq('id', docId)
+        .eq('uploaded_by', currentUser.id);
+
+    if (error) {
+        alert("Error updating: " + error.message);
+    } else {
+        alert("✅ Title updated successfully!");
+        if (document.getElementById('subjectDetail').classList.contains('active') && subId) loadDocuments(subId);
+        else myUploads();
+    }
+};
+
+window.deleteMyDocument = async function(docId, title, subId, event) {
+    event.stopPropagation();
+    if(!currentUser) return alert("Please login to delete.");
+
+    const confirmDelete = confirm(`Are you sure you want to permanently delete "${title}"?`);
+    if(!confirmDelete) return;
+
+    const { error } = await supabase.from('documents')
+        .delete()
+        .eq('id', docId)
+        .eq('uploaded_by', currentUser.id);
+
+    if (error) {
+        alert("Error deleting: " + error.message);
+    } else {
+        alert("🗑️ Document deleted!");
+        if (document.getElementById('subjectDetail').classList.contains('active') && subId) loadDocuments(subId);
+        else myUploads();
+    }
+};
+
 // ==========================================
-// 7. ADMIN CREATION FUNCTIONS
+// SECTION 14: ADMIN CREATION TOOLS
+// Functions requiring the ADMIN_CODE to create new hierarchy folders.
 // ==========================================
 window.createBranch = async function() {
     const pass = prompt("Enter Admin Code to create a Branch:");
@@ -539,7 +652,8 @@ window.createSubject = async function(sectionId) {
 };
 
 // ==========================================
-// 8. ADMIN DELETE FUNCTIONS
+// SECTION 15: ADMIN DELETION TOOLS
+// The master delete function requiring the ADMIN_CODE (used on the trash cans).
 // ==========================================
 window.deleteItem = async function(table, id, name, parentId, refreshFunction, event) {
     event.stopPropagation(); 
@@ -561,7 +675,8 @@ window.deleteItem = async function(table, id, name, parentId, refreshFunction, e
 };
 
 // ==========================================
-// 9. LIVE SEARCH FEATURE
+// SECTION 16: LIVE SEARCH FEATURE
+// Controls the search bar UI, the Supabase 'ilike' query, and results rendering.
 // ==========================================
 window.showSearchPage = function() {
     document.getElementById('searchSection').innerHTML = `
