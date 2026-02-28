@@ -343,9 +343,10 @@ window.previewFile = async function(url, type, docId) {
     if(docId) loadComments(docId);
 }
 
+
 // ==========================================
 // SECTION 10: BROWSE HIERARCHY (BRANCH -> SEM -> GROUP -> SUB)
-// Controls the drill-down navigation and sets up the upload form with Batch input.
+// Controls the drill-down navigation and sets up the upload form.
 // ==========================================
 window.listBranches = async function() {
     const { data } = await supabase.from('branches').select('*').order('name');
@@ -354,7 +355,10 @@ window.listBranches = async function() {
     html += data?.map(b => `
        <div class="branch-card" onclick="showBranch('${b.id}')" style="display:flex; justify-content:space-between; align-items:center;">
         <h3 style="margin:0;">${b.name}</h3>
-        <button onclick="deleteItem('branches', '${b.id}', '${b.name}', null, listBranches, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
+        <div style="display: flex; gap: 5px;">
+            <button onclick="editItem('branches', '${b.id}', '${b.name}', null, listBranches, event)" style="background:#3182ce; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">✏️</button>
+            <button onclick="deleteItem('branches', '${b.id}', '${b.name}', null, listBranches, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
+        </div>
        </div>`).join('') || '<p>No branches.</p>';
     document.getElementById('allBranches').innerHTML = html;
 }
@@ -374,7 +378,10 @@ window.showBranch = async function(id) {
     document.getElementById('semesterList').innerHTML = sems?.map(s => `
         <div class="branch-card" onclick="showSemester('${s.id}')" style="display:flex; justify-content:space-between; align-items:center;">
             <h3 style="margin:0;">Sem ${s.semester_number}: ${s.name}</h3>
-            <button onclick="deleteItem('semesters', '${s.id}', 'Semester ${s.semester_number}', '${id}', showBranch, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
+            <div style="display: flex; gap: 5px;">
+                <button onclick="editItem('semesters', '${s.id}', '${s.name}', '${id}', showBranch, event)" style="background:#3182ce; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">✏️</button>
+                <button onclick="deleteItem('semesters', '${s.id}', 'Semester ${s.semester_number}', '${id}', showBranch, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
+            </div>
         </div>`).join('') || '';
 };
 
@@ -393,7 +400,10 @@ window.showSemester = async function(id) {
     document.getElementById('sectionList').innerHTML = secs?.map(s => `
         <div class="branch-card" onclick="showSection('${s.id}')" style="display:flex; justify-content:space-between; align-items:center;">
             <h3 style="margin:0;">Group: ${s.name}</h3>
-            <button onclick="deleteItem('sections', '${s.id}', '${s.name}', '${id}', showSemester, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
+            <div style="display: flex; gap: 5px;">
+                <button onclick="editItem('sections', '${s.id}', '${s.name}', '${id}', showSemester, event)" style="background:#3182ce; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">✏️</button>
+                <button onclick="deleteItem('sections', '${s.id}', '${s.name}', '${id}', showSemester, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
+            </div>
         </div>`).join('') || '';
 };
 
@@ -412,7 +422,10 @@ window.showSection = async function(id) {
     document.getElementById('subjectList').innerHTML = subs?.map(s => `
         <div class="branch-card" onclick="showSubject('${s.id}')" style="display:flex; justify-content:space-between; align-items:center;">
             <h3 style="margin:0;">${s.name}</h3>
-            <button onclick="deleteItem('subjects', '${s.id}', '${s.name}', '${id}', showSection, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
+            <div style="display: flex; gap: 5px;">
+                <button onclick="editItem('subjects', '${s.id}', '${s.name}', '${id}', showSection, event)" style="background:#3182ce; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">✏️</button>
+                <button onclick="deleteItem('subjects', '${s.id}', '${s.name}', '${id}', showSection, event)" style="background:#e53e3e; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🗑️</button>
+            </div>
         </div>`).join('') || '';
 };
 
@@ -679,9 +692,32 @@ window.createSubject = async function(sectionId) {
 };
 
 // ==========================================
-// SECTION 15: ADMIN DELETION TOOLS
-// The master delete function requiring the ADMIN_CODE (used on the trash cans).
+// SECTION 15: ADMIN EDIT & DELETION TOOLS
+// Functions requiring the ADMIN_CODE to edit or delete hierarchy folders.
 // ==========================================
+window.editItem = async function(table, id, currentName, parentId, refreshFunction, event) {
+    event.stopPropagation(); // Prevents clicking into the folder
+    
+    const pass = prompt(`Enter Admin Code to edit "${currentName}":`);
+    if (pass !== ADMIN_CODE) return alert("Unauthorized or wrong code.");
+    
+    const newName = prompt(`Enter a new name for "${currentName}":`, currentName);
+    
+    // If they click cancel or didn't change anything, do nothing
+    if (!newName || newName === currentName) return; 
+    
+    const { error } = await supabase.from(table).update({ name: newName }).eq('id', id);
+    
+    if (error) {
+        alert("Error updating: " + error.message);
+    } else {
+        alert("✅ Updated successfully!");
+        // Refresh the current view to show the new name
+        if (parentId) refreshFunction(parentId);
+        else refreshFunction(); 
+    }
+};
+
 window.deleteItem = async function(table, id, name, parentId, refreshFunction, event) {
     event.stopPropagation(); 
     
