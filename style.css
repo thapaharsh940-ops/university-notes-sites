@@ -80,6 +80,10 @@ header { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.07); display: flex
 /* ========================================== */
 @media (max-width: 768px) {
     .mobile-header { display: flex; }
+    
+    /* THIS IS THE FIX: Forces the menu button to show up! */
+    #mobile-menu-btn { display: block !important; } 
+    
     .sidebar { transform: translateX(-100%); }
     .sidebar.closed { transform: translateX(-100%); }
     .sidebar.open { transform: translateX(0); }
