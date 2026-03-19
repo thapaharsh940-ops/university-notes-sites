@@ -371,64 +371,31 @@ window.showAssignmentUploadForm = async function(branchId) {
         <button onclick="wsShowBranch('${wsBranch.id}', '${wsBranch.name}')" class="btn-action" style="margin-bottom: 1em;">⬅ Back</button>
         <h2>Upload Assignment</h2>
         <form onsubmit="submitAssignmentUpload(event, '${branchId}')" style="background: white; padding: 20px; border-radius: 8px;">
-            <h3 style="margin-top:0;">1. Select Location</h3>
-            <div style="display:flex; gap:10px; margin-bottom:20px;">
-                <select id="upWsBadge" onchange="wsLoadSems(this)" required style="flex:1;"><option value="">Select Badge...</option></select>
-                <select id="upWsSem" onchange="wsLoadGroups(this)" required style="flex:1;" disabled><option value="">Select Semester...</option></select>
-                <select id="upWsGroup" onchange="wsLoadSubs(this)" required style="flex:1;" disabled><option value="">Select Group...</option></select>
-                <select id="upWsSub" required style="flex:1;" disabled><option value="">Select Subject...</option></select>
+            
+            <h3 style="margin-top:0; color:#2d3748;">1. Select Badge & Folder</h3>
+            <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:25px;">
+                <select id="upWsBadge" onchange="wsLoadSems(this)" required style="width:100%; padding:10px;"><option value="">Select Badge...</option></select>
+                <select id="upWsSem" onchange="wsLoadGroups(this)" required style="width:100%; padding:10px;" disabled><option value="">Select Semester...</option></select>
+                <select id="upWsGroup" onchange="wsLoadSubs(this)" required style="width:100%; padding:10px;" disabled><option value="">Select Group...</option></select>
+                <select id="upWsSub" required style="width:100%; padding:10px;" disabled><option value="">Select Subject...</option></select>
             </div>
-            <h3>2. Details</h3>
-            <input type="text" id="upAssNo" required placeholder="Assignment Number (e.g. 1)" />
-            <textarea id="upQuestion" required placeholder="Assignment Question..."></textarea>
-            <input type="text" id="upStudentName" placeholder="Your Name (Optional)" />
-            <h3>3. File</h3>
-            <input type="file" id="upAssFile" required />
-            <button class="btn-primary" type="submit" style="width: 100%; background:#48bb78;">Upload Assignment</button>
-        </form>`;
-    document.getElementById('workstationUpload').innerHTML = html; showDashboard('workstationUpload');
+            
+            <h3 style="color:#2d3748;">2. Details</h3>
+            <input type="text" id="upAssNo" required placeholder="Assignment Number (e.g. 1)" style="margin-bottom:12px; width:100%; padding:10px;" />
+            <textarea id="upQuestion" required placeholder="Assignment Question..." style="margin-bottom:12px; width:100%; padding:10px;"></textarea>
+            <input type="text" id="upStudentName" placeholder="Your Name (Optional)" style="margin-bottom:12px; width:100%; padding:10px;" />
+            
+            <h3 style="color:#2d3748;">3. File</h3>
+            <input type="file" id="upAssFile" required style="margin-bottom:15px; width:100%;" />
+            
+            <button class="btn-primary" type="submit" style="width: 100%; background:#48bb78; padding:15px; font-size:1.1em;">Upload Assignment</button>
+        </form>
+    `;
+    
+    document.getElementById('workstationUpload').innerHTML = html; 
+    showDashboard('workstationUpload');
+    
     const { data: batches } = await supabase.from('ws_batches').select('*').eq('branch_id', branchId);
     const badgeSelect = document.getElementById('upWsBadge');
     (batches || []).forEach(b => badgeSelect.innerHTML += `<option value="${b.id}|${b.name}">${b.name}</option>`);
-}
-
-window.wsLoadSems = async function(sel) {
-    const sem = document.getElementById('upWsSem'); sem.innerHTML = '<option value="">Select Semester...</option>';
-    if(!sel.value) { sem.disabled = true; return; }
-    const { data } = await supabase.from('ws_semesters').select('*').eq('batch_id', sel.value.split('|')[0]);
-    (data || []).forEach(s => sem.innerHTML += `<option value="${s.id}|${s.name}">${s.name}</option>`); sem.disabled = false;
-}
-window.wsLoadGroups = async function(sel) {
-    const grp = document.getElementById('upWsGroup'); grp.innerHTML = '<option value="">Select Group...</option>';
-    if(!sel.value) { grp.disabled = true; return; }
-    const { data } = await supabase.from('ws_sections').select('*').eq('semester_id', sel.value.split('|')[0]);
-    (data || []).forEach(g => grp.innerHTML += `<option value="${g.id}|${g.name}">${g.name}</option>`); grp.disabled = false;
-}
-window.wsLoadSubs = async function(sel) {
-    const sub = document.getElementById('upWsSub'); sub.innerHTML = '<option value="">Select Subject...</option>';
-    if(!sel.value) { sub.disabled = true; return; }
-    const { data } = await supabase.from('ws_subjects').select('*').eq('section_id', sel.value.split('|')[0]);
-    (data || []).forEach(s => sub.innerHTML += `<option value="${s.id}|${s.name}">${s.name}</option>`); sub.disabled = false;
-}
-
-window.submitAssignmentUpload = async function(e, branchId) {
-    e.preventDefault(); if(!currentUser) return;
-    const file = document.getElementById('upAssFile').files[0];
-    try {
-        const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-        await supabase.storage.from('university-assignments-files').upload(fileName, file);
-        const { data: { publicUrl: fileUrl } } = supabase.storage.from('university-assignments-files').getPublicUrl(fileName);
-
-        const { error } = await supabase.from('assignments').insert([{
-            branch_id: branchId, 
-            batch_name: document.getElementById('upWsBadge').value.split('|')[1], 
-            semester_name: document.getElementById('upWsSem').value.split('|')[1], 
-            section_name: document.getElementById('upWsGroup').value.split('|')[1], 
-            subject_name: document.getElementById('upWsSub').value.split('|')[1],
-            assignment_no: document.getElementById('upAssNo').value, question: document.getElementById('upQuestion').value,
-            student_name: document.getElementById('upStudentName').value || null, file_url: fileUrl, file_type: file.type,
-            uploaded_by: currentUser.id, uploader_email: currentUser.email
-        }]);
-        if (error) throw error; alert("Assignment Uploaded! 📝"); wsShowBranch(wsBranch.id, wsBranch.name);
-    } catch(err) { alert("Upload failed!"); console.error(err); }
 }
