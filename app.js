@@ -135,36 +135,75 @@ window.previewFile = async function(url, type, docId) {
 window.listBranches = async function() {
     const { data } = await supabase.from('branches').select('*').order('name');
     let html = `<h2>Browse Notes</h2><button onclick="createFolder('branches', null, listBranches)" class="btn-primary" style="background:#28a745;">+ Add Branch</button>`;
-    html += (data || []).map(b => `<div class="branch-card" onclick="showBranch('${b.id}')" style="display:flex; justify-content:space-between;"><h3>${b.name}</h3><div><button onclick="deleteFolder('branches', '${b.id}', listBranches, event)" class="btn-delete">🗑️</button></div></div>`).join('') || '<p>No branches.</p>';
+    html += (data || []).map(b => `
+       <div class="branch-card" onclick="showBranch('${b.id}')" style="display:flex; justify-content:space-between; align-items:center;">
+           <h3>${b.name}</h3>
+           <div style="display:flex; gap:5px;">
+               <button onclick="editItem('branches', '${b.id}', '${b.name}', listBranches, event)" class="btn-action" style="color:#3182ce; border-color:#3182ce; padding:5px 10px;">✏️</button>
+               <button onclick="deleteItem('branches', '${b.id}', '${b.name}', listBranches, event)" class="btn-delete" style="padding:5px 10px;">🗑️</button>
+           </div>
+       </div>`).join('') || '<p>No branches.</p>';
     document.getElementById('allBranches').innerHTML = html;
 }
+
 window.showBranch = async function(id) {
     const { data } = await supabase.from('branches').select('*').eq('id', id).single(); currentBranch = data;
     let html = `<button onclick="showDashboard('allBranches')" class="btn-action">⬅ Back</button><h2>${data.name} Badges</h2><button onclick="createFolder('batches', '${id}', () => showBranch('${id}'))" class="btn-primary" style="background:#28a745;">+ Add Badge</button><div id="batchList"></div>`;
     document.getElementById('branchDetail').innerHTML = html; showDashboard('branchDetail');
     const { data: batches } = await supabase.from('batches').select('*').eq('branch_id', id);
-    document.getElementById('batchList').innerHTML = (batches || []).map(b => `<div class="branch-card" onclick="showBatch('${b.id}')" style="display:flex; justify-content:space-between;"><h3>🎓 ${b.name}</h3><button onclick="deleteFolder('batches', '${b.id}', () => showBranch('${id}'), event)" class="btn-delete">🗑️</button></div>`).join('') || '<p>No badges.</p>';
+    document.getElementById('batchList').innerHTML = (batches || []).map(b => `
+       <div class="branch-card" onclick="showBatch('${b.id}')" style="display:flex; justify-content:space-between; align-items:center;">
+           <h3>🎓 ${b.name}</h3>
+           <div style="display:flex; gap:5px;">
+               <button onclick="editItem('batches', '${b.id}', '${b.name}', () => showBranch('${id}'), event)" class="btn-action" style="color:#3182ce; border-color:#3182ce; padding:5px 10px;">✏️</button>
+               <button onclick="deleteItem('batches', '${b.id}', '${b.name}', () => showBranch('${id}'), event)" class="btn-delete" style="padding:5px 10px;">🗑️</button>
+           </div>
+       </div>`).join('') || '<p>No badges.</p>';
 };
+
 window.showBatch = async function(id) {
     const { data } = await supabase.from('batches').select('*').eq('id', id).single(); currentBatch = data;
     let html = `<button onclick="showBranch('${currentBranch.id}')" class="btn-action">⬅ Back</button><h2>Badge: ${data.name}</h2><button onclick="createFolder('semesters', '${id}', () => showBatch('${id}'))" class="btn-primary" style="background:#28a745;">+ Add Semester</button><div id="semList"></div>`;
     document.getElementById('batchDetail').innerHTML = html; showDashboard('batchDetail');
     const { data: sems } = await supabase.from('semesters').select('*').eq('batch_id', id);
-    document.getElementById('semList').innerHTML = (sems || []).map(s => `<div class="branch-card" onclick="showSemester('${s.id}')" style="display:flex; justify-content:space-between;"><h3>${s.name}</h3><button onclick="deleteFolder('semesters', '${s.id}', () => showBatch('${id}'), event)" class="btn-delete">🗑️</button></div>`).join('') || '<p>No semesters.</p>';
+    document.getElementById('semList').innerHTML = (sems || []).map(s => `
+       <div class="branch-card" onclick="showSemester('${s.id}')" style="display:flex; justify-content:space-between; align-items:center;">
+           <h3>${s.name}</h3>
+           <div style="display:flex; gap:5px;">
+               <button onclick="editItem('semesters', '${s.id}', '${s.name}', () => showBatch('${id}'), event)" class="btn-action" style="color:#3182ce; border-color:#3182ce; padding:5px 10px;">✏️</button>
+               <button onclick="deleteItem('semesters', '${s.id}', '${s.name}', () => showBatch('${id}'), event)" class="btn-delete" style="padding:5px 10px;">🗑️</button>
+           </div>
+       </div>`).join('') || '<p>No semesters.</p>';
 };
+
 window.showSemester = async function(id) {
     const { data } = await supabase.from('semesters').select('*').eq('id', id).single(); currentSemester = data;
     let html = `<button onclick="showBatch('${currentSemester.batch_id}')" class="btn-action">⬅ Back</button><h2>${data.name}</h2><button onclick="createFolder('sections', '${id}', () => showSemester('${id}'))" class="btn-primary" style="background:#28a745;">+ Add Group</button><div id="secList"></div>`;
     document.getElementById('semesterDetail').innerHTML = html; showDashboard('semesterDetail');
     const { data: secs } = await supabase.from('sections').select('*').eq('semester_id', id);
-    document.getElementById('secList').innerHTML = (secs || []).map(s => `<div class="branch-card" onclick="showSection('${s.id}')" style="display:flex; justify-content:space-between;"><h3>${s.name}</h3><button onclick="deleteFolder('sections', '${s.id}', () => showSemester('${id}'), event)" class="btn-delete">🗑️</button></div>`).join('') || '<p>No groups.</p>';
+    document.getElementById('secList').innerHTML = (secs || []).map(s => `
+       <div class="branch-card" onclick="showSection('${s.id}')" style="display:flex; justify-content:space-between; align-items:center;">
+           <h3>${s.name}</h3>
+           <div style="display:flex; gap:5px;">
+               <button onclick="editItem('sections', '${s.id}', '${s.name}', () => showSemester('${id}'), event)" class="btn-action" style="color:#3182ce; border-color:#3182ce; padding:5px 10px;">✏️</button>
+               <button onclick="deleteItem('sections', '${s.id}', '${s.name}', () => showSemester('${id}'), event)" class="btn-delete" style="padding:5px 10px;">🗑️</button>
+           </div>
+       </div>`).join('') || '<p>No groups.</p>';
 };
+
 window.showSection = async function(id) {
     const { data } = await supabase.from('sections').select('*').eq('id', id).single(); currentSection = data;
     let html = `<button onclick="showSemester('${currentSection.semester_id}')" class="btn-action">⬅ Back</button><h2>Group: ${data.name}</h2><button onclick="createFolder('subjects', '${id}', () => showSection('${id}'))" class="btn-primary" style="background:#28a745;">+ Add Subject</button><div id="subList"></div>`;
     document.getElementById('sectionDetail').innerHTML = html; showDashboard('sectionDetail');
     const { data: subs } = await supabase.from('subjects').select('*').eq('section_id', id);
-    document.getElementById('subList').innerHTML = (subs || []).map(s => `<div class="branch-card" onclick="showSubject('${s.id}')" style="display:flex; justify-content:space-between;"><h3>${s.name}</h3><button onclick="deleteFolder('subjects', '${s.id}', () => showSection('${id}'), event)" class="btn-delete">🗑️</button></div>`).join('') || '<p>No subjects.</p>';
+    document.getElementById('subList').innerHTML = (subs || []).map(s => `
+       <div class="branch-card" onclick="showSubject('${s.id}')" style="display:flex; justify-content:space-between; align-items:center;">
+           <h3>${s.name}</h3>
+           <div style="display:flex; gap:5px;">
+               <button onclick="editItem('subjects', '${s.id}', '${s.name}', () => showSection('${id}'), event)" class="btn-action" style="color:#3182ce; border-color:#3182ce; padding:5px 10px;">✏️</button>
+               <button onclick="deleteItem('subjects', '${s.id}', '${s.name}', () => showSection('${id}'), event)" class="btn-delete" style="padding:5px 10px;">🗑️</button>
+           </div>
+       </div>`).join('') || '<p>No subjects.</p>';
 };
 
 window.showSubject = async function(id) {
@@ -195,7 +234,14 @@ window.uploadDocument = async function(e) {
 
 window.loadDocuments = async function(subId) {
     const { data } = await supabase.from('documents').select('*').eq('subject_id', subId).order('created_at', {ascending: false});
-    document.getElementById('documentList').innerHTML = (data || []).map(d => `<div class="branch-card" style="width: 250px;"><h4>${d.title}</h4><button onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')" class="btn-primary">👁️ View</button><button onclick="deleteFolder('documents', '${d.id}', () => loadDocuments('${subId}'), event)" class="btn-delete">🗑️</button></div>`).join('') || '<p>No documents.</p>';
+    document.getElementById('documentList').innerHTML = (data || []).map(d => `
+        <div class="branch-card" style="width: 250px;">
+            <h4>${d.title}</h4>
+            <div style="display:flex; justify-content:space-between; margin-top:10px;">
+                <button onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')" class="btn-primary">👁️ View</button>
+                <button onclick="deleteItem('documents', '${d.id}', '${d.title}', () => loadDocuments('${subId}'), event)" class="btn-action" style="color:#e53e3e; border:none;">🗑️</button>
+            </div>
+        </div>`).join('') || '<p>No documents.</p>';
 }
 
 // ==========================================
@@ -229,7 +275,12 @@ window.performNotesSearch = async function() {
 window.myUploads = async function() {
     if(!currentUser) { document.getElementById('myUploads').innerHTML = `<p>Please login.</p>`; return; }
     const { data } = await supabase.from('documents').select('*').eq('uploaded_by', currentUser.id);
-    document.getElementById('myUploads').innerHTML = `<h2>My Uploads</h2><div style="display:flex; flex-wrap:wrap; gap:15px;">` + ((data || []).map(d => `<div class="branch-card" style="width:250px;"><h4>${d.title}</h4><button onclick="previewFile('${d.file_url}', '${d.file_type}')" class="btn-primary">View</button><button onclick="deleteFolder('documents', '${d.id}', myUploads, event)" class="btn-delete">Delete</button></div>`).join('') || '<p>No uploads.</p>') + `</div>`;
+    document.getElementById('myUploads').innerHTML = `<h2>My Uploads</h2><div style="display:flex; flex-wrap:wrap; gap:15px;">` + ((data || []).map(d => `
+        <div class="branch-card" style="width:250px;">
+            <h4>${d.title}</h4>
+            <button onclick="previewFile('${d.file_url}', '${d.file_type}')" class="btn-primary">View</button>
+            <button onclick="deleteItem('documents', '${d.id}', '${d.title}', myUploads, event)" class="btn-delete">Delete</button>
+        </div>`).join('') || '<p>No uploads.</p>') + `</div>`;
 }
 
 // ==========================================
@@ -249,9 +300,21 @@ window.createFolder = async function(table, parentId, refreshFunc) {
     await supabase.from(table).insert([insertData]); refreshFunc();
 };
 
-window.deleteFolder = async function(table, id, refreshFunc, e) {
-    e.stopPropagation(); const p = prompt("Admin Code:"); if(p !== ADMIN_CODE) return;
-    if(confirm("Delete this?")) { await supabase.from(table).delete().eq('id', id); refreshFunc(); }
+window.editItem = async function(table, id, currentName, refreshFunc, event) {
+    event.stopPropagation(); 
+    const p = prompt(`Admin Code to edit:`); if (p !== ADMIN_CODE) return alert("Unauthorized.");
+    const newName = prompt(`New name:`, currentName); if (!newName || newName === currentName) return; 
+    const { error } = await supabase.from(table).update({ name: newName }).eq('id', id);
+    if (!error) { refreshFunc(); } else { alert(error.message); }
+};
+
+window.deleteItem = async function(table, id, name, refreshFunc, event) {
+    event.stopPropagation(); 
+    const p = prompt("Admin Code:"); if(p !== ADMIN_CODE) return;
+    if(confirm(`Delete "${name}"?`)) { 
+        const { error } = await supabase.from(table).delete().eq('id', id); 
+        if(error) alert(error.message); else refreshFunc(); 
+    }
 };
 
 // ==========================================
@@ -261,7 +324,14 @@ window.wsListBranches = async function() {
     const { data } = await supabase.from('ws_branches').select('*').order('name');
     let html = `<h2>Workstation (Select Branch)</h2>`;
     html += `<button onclick="createFolder('ws_branches', null, wsListBranches)" class="btn-primary" style="background:#28a745;">+ Add WS Branch (Admin)</button>`;
-    html += (data || []).map(b => `<div class="branch-card" onclick="wsShowBranch('${b.id}', '${b.name}')" style="display:flex; justify-content:space-between;"><h3>💻 ${b.name}</h3><button onclick="deleteFolder('ws_branches', '${b.id}', wsListBranches, event)" class="btn-delete">🗑️</button></div>`).join('') || '<p>No branches.</p>';
+    html += (data || []).map(b => `
+        <div class="branch-card" onclick="wsShowBranch('${b.id}', '${b.name}')" style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>💻 ${b.name}</h3>
+            <div style="display:flex; gap:5px;">
+                <button onclick="editItem('ws_branches', '${b.id}', '${b.name}', wsListBranches, event)" class="btn-action" style="color:#3182ce; border-color:#3182ce; padding:5px 10px;">✏️</button>
+                <button onclick="deleteItem('ws_branches', '${b.id}', '${b.name}', wsListBranches, event)" class="btn-delete" style="padding:5px 10px;">🗑️</button>
+            </div>
+        </div>`).join('') || '<p>No branches.</p>';
     document.getElementById('workstationHome').innerHTML = html;
 }
 
@@ -282,7 +352,7 @@ window.wsShowBranch = async function(id, name) {
         <div class="search-grid">
             <div class="search-box-card">
                 <h3>🔍 Specific Search</h3>
-                <select id="wsSpecBadge" style="margin-bottom:10px; width:100%; padding:10px; border-radius:6px; border:2px solid #cbd5e0;">${yrOptions}</select>
+                <select id="wsSpecBadge" style="margin-bottom:10px;">${yrOptions}</select>
                 <input id="wsSpecGroup" placeholder="Group Name (e.g. Group A)" />
                 <input id="wsSpecSub" placeholder="Subject Name" />
                 <input id="wsSpecNo" placeholder="Assignment No" />
@@ -298,28 +368,21 @@ window.wsShowBranch = async function(id, name) {
     `;
     document.getElementById('wsBranchDetail').innerHTML = html; 
     showDashboard('wsBranchDetail');
-    
-    // Automatically load all assignments for this branch when opened
     wsSearchSpecific(id);
 };
 
 window.wsSearchSpecific = async function(branchId) {
-    const badge = document.getElementById('wsSpecBadge').value; 
-    const group = document.getElementById('wsSpecGroup').value; 
-    const sub = document.getElementById('wsSpecSub').value; 
-    const num = document.getElementById('wsSpecNo').value;
-    
+    const badge = document.getElementById('wsSpecBadge').value; const group = document.getElementById('wsSpecGroup').value; 
+    const sub = document.getElementById('wsSpecSub').value; const num = document.getElementById('wsSpecNo').value;
     document.getElementById('wsResultsList').innerHTML = '<p>Searching...</p>';
     
     let query = supabase.from('assignments').select('*').eq('branch_id', branchId).order('created_at', { ascending: false });
-    
     if (badge) query = query.ilike('batch_name', `%${badge}%`);
     if (group) query = query.ilike('section_name', `%${group}%`);
     if (sub) query = query.ilike('subject_name', `%${sub}%`);
     if (num) query = query.eq('assignment_no', num);
     
-    const { data } = await query; 
-    wsRenderAss(data);
+    const { data } = await query; wsRenderAss(data);
 }
 
 window.wsSearchAll = async function(branchId) {
@@ -339,7 +402,10 @@ function wsRenderAss(data) {
                 <p style="font-size: 0.8em; color: #718096; margin-bottom: 5px;"><strong>Subject:</strong> ${a.subject_name} <br><strong>Group:</strong> ${a.section_name}</p>
                 <p style="font-size: 0.8em; color: #718096; margin-bottom: 15px;"><strong>By:</strong> ${a.student_name || a.uploader_email.split('@')[0]}</p>
             </div>
-            <button onclick="previewFile('${a.file_url}', '${a.file_type}', null)" class="btn-primary" style="width: 100%; margin-top: auto;">👁️ View Assignment</button>
+            <div style="display:flex; justify-content:space-between; margin-top:auto;">
+               <button onclick="previewFile('${a.file_url}', '${a.file_type}', null)" class="btn-primary" style="flex:1;">👁️ View</button>
+               <button onclick="deleteItem('assignments', '${a.id}', 'this assignment', () => wsSearchSpecific('${a.branch_id}'), event)" class="btn-action" style="color:#e53e3e; border:none;">🗑️</button>
+            </div>
         </div>`).join('') || `<p>No assignments found. Be the first to upload one!</p>`;
 }
 
@@ -349,7 +415,6 @@ function wsRenderAss(data) {
 window.showAssignmentUploadForm = async function(branchId) {
     if(!currentUser) return alert("Please login to upload an assignment.");
     
-    // Auto-generate years 1900-2100 for the Upload Dropdown
     let yrOptions = '<option value="">Select Badge (Year)...</option>';
     for(let y=2100; y>=1900; y--) yrOptions += `<option value="${y}">${y}</option>`;
 
@@ -392,18 +457,9 @@ window.showAssignmentUploadForm = async function(branchId) {
 window.submitAssignmentUpload = async function(e, branchId) {
     e.preventDefault(); 
     if(!currentUser) return;
-    
-    // Read the text values from the generic inputs
-    const batchName = document.getElementById('upWsBadge').value;
-    const semName = document.getElementById('upWsSem').value;
-    const secName = document.getElementById('upWsGroup').value;
-    const subName = document.getElementById('upWsSub').value;
-    const assNo = document.getElementById('upAssNo').value;
-    const question = document.getElementById('upQuestion').value;
-    const studentName = document.getElementById('upStudentName').value;
-    const file = document.getElementById('upAssFile').files[0];
 
     try {
+        const file = document.getElementById('upAssFile').files[0];
         const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
         const fileName = `${Date.now()}_${cleanFileName}`;
         await supabase.storage.from('university-assignments-files').upload(fileName, file);
@@ -411,13 +467,13 @@ window.submitAssignmentUpload = async function(e, branchId) {
 
         const { error } = await supabase.from('assignments').insert([{
             branch_id: branchId, 
-            batch_name: batchName, 
-            semester_name: semName, 
-            section_name: secName, 
-            subject_name: subName,
-            assignment_no: assNo, 
-            question: question, 
-            student_name: studentName || null, 
+            batch_name: document.getElementById('upWsBadge').value, 
+            semester_name: document.getElementById('upWsSem').value, 
+            section_name: document.getElementById('upWsGroup').value, 
+            subject_name: document.getElementById('upWsSub').value,
+            assignment_no: document.getElementById('upAssNo').value, 
+            question: document.getElementById('upQuestion').value, 
+            student_name: document.getElementById('upStudentName').value || null, 
             file_url: fileUrl, 
             file_type: file.type,
             uploaded_by: currentUser.id, 
@@ -425,10 +481,8 @@ window.submitAssignmentUpload = async function(e, branchId) {
         }]);
         
         if (error) throw error; 
-        
         alert("Assignment Uploaded! 📝"); 
         wsShowBranch(wsBranch.id, wsBranch.name);
-        
     } catch(err) { 
         alert("Upload failed! Check console."); 
         console.error(err); 
