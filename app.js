@@ -1,4 +1,4 @@
-// =========================================
+// ==========================================
 // SECTION 1: GLOBAL VARIABLES & ADMIN SETUP
 // ==========================================
 const ADMIN_CODE = "sahil12345"; 
@@ -20,6 +20,8 @@ window.onclick = e => {
         sidebar.classList.remove('open'); sidebar.classList.add('closed');
     }
 };
+
+window.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideModal(); });
 
 // ==========================================
 // SECTION 3: MODALS & AUTHENTICATION
@@ -129,7 +131,6 @@ window.previewFile = async function(url, type, docId) {
 
 // ==========================================
 // SECTION 7: NOTES BROWSE HIERARCHY
-// (Fixed mapping logic to prevent crashes)
 // ==========================================
 window.listBranches = async function() {
     const { data } = await supabase.from('branches').select('*').order('name');
@@ -243,10 +244,7 @@ window.createFolder = async function(table, parentId, refreshFunc) {
     if (table === 'semesters') insertData = { batch_id: parentId, name: n };
     if (table === 'sections') insertData = { semester_id: parentId, name: n };
     if (table === 'subjects') insertData = { section_id: parentId, name: n };
-    if (table === 'ws_batches') insertData = { branch_id: parentId, name: n };
-    if (table === 'ws_semesters') insertData = { batch_id: parentId, name: n };
-    if (table === 'ws_sections') insertData = { semester_id: parentId, name: n };
-    if (table === 'ws_subjects') insertData = { section_id: parentId, name: n };
+    if (table === 'ws_branches') insertData = { name: n };
 
     await supabase.from(table).insert([insertData]); refreshFunc();
 };
@@ -257,7 +255,7 @@ window.deleteFolder = async function(table, id, refreshFunc, e) {
 };
 
 // ==========================================
-// SECTION 10: WORKSTATION (ASSIGNMENTS)
+// SECTION 17: WORKSTATION ISOLATED DASHBOARD
 // ==========================================
 window.wsListBranches = async function() {
     const { data } = await supabase.from('ws_branches').select('*').order('name');
@@ -270,21 +268,21 @@ window.wsListBranches = async function() {
 window.wsShowBranch = async function(id, name) {
     wsBranch = {id: id, name: name};
     
-    let batchOptions = '<option value="">All Badges</option>';
-    const { data: batches } = await supabase.from('ws_batches').select('*').eq('branch_id', id);
-    (batches || []).forEach(b => batchOptions += `<option value="${b.name}">${b.name}</option>`);
+    // Auto-generate years 1900-2100 for the Search Dropdown
+    let yrOptions = '<option value="">All Badges (Years)</option>';
+    for(let y=2100; y>=1900; y--) yrOptions += `<option value="${y}">${y}</option>`;
 
     let html = `
         <button onclick="showDashboard('workstationHome')" class="btn-action" style="margin-bottom: 1em;">⬅ Back to Branches</button>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
             <h2 style="margin:0;">📝 ${name} Assignments</h2>
-            <button onclick="showAssignmentUploadForm('${id}')" class="btn-primary" style="background:#48bb78; margin:0;">+ Upload Assignment</button>
+            <button onclick="showAssignmentUploadForm('${id}')" class="btn-primary" style="background:#48bb78; margin:0;">+ Upload</button>
         </div>
 
         <div class="search-grid">
             <div class="search-box-card">
                 <h3>🔍 Specific Search</h3>
-                <select id="wsSpecBadge" style="margin-bottom:10px;">${batchOptions}</select>
+                <select id="wsSpecBadge" style="margin-bottom:10px; width:100%; padding:10px; border-radius:6px; border:2px solid #cbd5e0;">${yrOptions}</select>
                 <input id="wsSpecGroup" placeholder="Group Name (e.g. Group A)" />
                 <input id="wsSpecSub" placeholder="Subject Name" />
                 <input id="wsSpecNo" placeholder="Assignment No" />
@@ -297,92 +295,87 @@ window.wsShowBranch = async function(id, name) {
             </div>
         </div>
         <div id="wsResultsList" style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 1em; margin-bottom: 2em;"></div>
-        
-        <hr>
-        <h3 style="margin-top:2em; color:#718096;">Admin Folder Builder</h3>
-        <button onclick="createFolder('ws_batches', '${id}', () => wsShowBranch('${id}','${name}'))" class="btn-primary" style="background:#28a745;">+ Add WS Badge</button>
-        <div id="wsBatchList"></div>
     `;
-    document.getElementById('wsBranchDetail').innerHTML = html; showDashboard('wsBranchDetail');
+    document.getElementById('wsBranchDetail').innerHTML = html; 
+    showDashboard('wsBranchDetail');
     
-    document.getElementById('wsBatchList').innerHTML = (batches || []).map(b => `<div class="branch-card" onclick="wsShowBatch('${b.id}')" style="display:flex; justify-content:space-between;"><h4>🎓 ${b.name}</h4><button onclick="deleteFolder('ws_batches', '${b.id}', () => wsShowBranch('${id}','${name}'), event)" class="btn-delete">🗑️</button></div>`).join('') || '<p>No folders.</p>';
+    // Automatically load all assignments for this branch when opened
+    wsSearchSpecific(id);
 };
 
-// Drilldown logic so admins can build the paths for the upload form
-window.wsShowBatch = async function(id) {
-    const { data } = await supabase.from('ws_batches').select('*').eq('id', id).single();
-    let html = `<button onclick="wsShowBranch('${wsBranch.id}', '${wsBranch.name}')" class="btn-action">⬅ Back</button><h2>WS Badge: ${data.name}</h2><button onclick="createFolder('ws_semesters', '${id}', () => wsShowBatch('${id}'))" class="btn-primary" style="background:#28a745;">+ Add Semester</button><div id="wsSemList"></div>`;
-    document.getElementById('wsBatchDetail').innerHTML = html; showDashboard('wsBatchDetail');
-    const { data: sems } = await supabase.from('ws_semesters').select('*').eq('batch_id', id);
-    document.getElementById('wsSemList').innerHTML = (sems || []).map(s => `<div class="branch-card" onclick="wsShowSemester('${s.id}')" style="display:flex; justify-content:space-between;"><h4>${s.name}</h4><button onclick="deleteFolder('ws_semesters', '${s.id}', () => wsShowBatch('${id}'), event)" class="btn-delete">🗑️</button></div>`).join('');
-};
-window.wsShowSemester = async function(id) {
-    const { data } = await supabase.from('ws_semesters').select('*').eq('id', id).single();
-    let html = `<button onclick="wsShowBatch('${data.batch_id}')" class="btn-action">⬅ Back</button><h2>${data.name}</h2><button onclick="createFolder('ws_sections', '${id}', () => wsShowSemester('${id}'))" class="btn-primary" style="background:#28a745;">+ Add Group</button><div id="wsGrpList"></div>`;
-    document.getElementById('wsSemesterDetail').innerHTML = html; showDashboard('wsSemesterDetail');
-    const { data: secs } = await supabase.from('ws_sections').select('*').eq('semester_id', id);
-    document.getElementById('wsGrpList').innerHTML = (secs || []).map(s => `<div class="branch-card" onclick="wsShowSection('${s.id}')" style="display:flex; justify-content:space-between;"><h4>${s.name}</h4><button onclick="deleteFolder('ws_sections', '${s.id}', () => wsShowSemester('${id}'), event)" class="btn-delete">🗑️</button></div>`).join('');
-};
-window.wsShowSection = async function(id) {
-    const { data } = await supabase.from('ws_sections').select('*').eq('id', id).single();
-    let html = `<button onclick="wsShowSemester('${data.semester_id}')" class="btn-action">⬅ Back</button><h2>${data.name}</h2><button onclick="createFolder('ws_subjects', '${id}', () => wsShowSection('${id}'))" class="btn-primary" style="background:#28a745;">+ Add Subject</button><div id="wsSubList"></div>`;
-    document.getElementById('wsSectionDetail').innerHTML = html; showDashboard('wsSectionDetail');
-    const { data: subs } = await supabase.from('ws_subjects').select('*').eq('section_id', id);
-    document.getElementById('wsSubList').innerHTML = (subs || []).map(s => `<div class="branch-card" style="display:flex; justify-content:space-between;"><h4>${s.name}</h4><button onclick="deleteFolder('ws_subjects', '${s.id}', () => wsShowSection('${id}'), event)" class="btn-delete">🗑️</button></div>`).join('');
-};
-
-// ==========================================
-// SECTION 11: ASSIGNMENT SEARCH RESULTS
-// ==========================================
 window.wsSearchSpecific = async function(branchId) {
-    const badge = document.getElementById('wsSpecBadge').value; const group = document.getElementById('wsSpecGroup').value; const sub = document.getElementById('wsSpecSub').value; const num = document.getElementById('wsSpecNo').value;
+    const badge = document.getElementById('wsSpecBadge').value; 
+    const group = document.getElementById('wsSpecGroup').value; 
+    const sub = document.getElementById('wsSpecSub').value; 
+    const num = document.getElementById('wsSpecNo').value;
+    
     document.getElementById('wsResultsList').innerHTML = '<p>Searching...</p>';
-    let query = supabase.from('assignments').select('*').eq('branch_id', branchId);
+    
+    let query = supabase.from('assignments').select('*').eq('branch_id', branchId).order('created_at', { ascending: false });
+    
     if (badge) query = query.ilike('batch_name', `%${badge}%`);
     if (group) query = query.ilike('section_name', `%${group}%`);
     if (sub) query = query.ilike('subject_name', `%${sub}%`);
     if (num) query = query.eq('assignment_no', num);
-    const { data } = await query; wsRenderAss(data);
+    
+    const { data } = await query; 
+    wsRenderAss(data);
 }
+
 window.wsSearchAll = async function(branchId) {
     const q = document.getElementById('wsAllQ').value; if (!q) return;
     document.getElementById('wsResultsList').innerHTML = '<p>Searching...</p>';
-    const { data } = await supabase.from('assignments').select('*').eq('branch_id', branchId).ilike('question', `%${q}%`);
+    const { data } = await supabase.from('assignments').select('*').eq('branch_id', branchId).ilike('question', `%${q}%`).order('created_at', { ascending: false });
     wsRenderAss(data);
 }
+
 function wsRenderAss(data) {
     document.getElementById('wsResultsList').innerHTML = (data || []).map(a => `
-        <div class="branch-card" style="width: 300px; border-top: 4px solid #48bb78;">
-            <span style="background: #edf2f7; padding: 2px 6px; font-size: 0.8em;">No: ${a.assignment_no}</span>
-            <span style="background: #ebf4ff; padding: 2px 6px; font-size: 0.8em;">🎓 ${a.batch_name}</span>
-            <h4 style="margin:10px 0;">${a.question}</h4>
-            <p style="font-size: 0.8em; color: #718096;">Subject: ${a.subject_name} | Group: ${a.section_name}</p>
-            <p style="font-size: 0.8em; color: #718096;">By: ${a.student_name || a.uploader_email}</p>
-            <button onclick="previewFile('${a.file_url}', '${a.file_type}', null)" class="btn-primary" style="width: 100%;">👁️ View</button>
-        </div>`).join('') || `<p>No assignments found.</p>`;
+        <div class="branch-card" style="width: 300px; border-top: 4px solid #48bb78; display: flex; flex-direction: column;">
+            <div>
+                <span style="background: #edf2f7; padding: 2px 6px; font-size: 0.8em; border-radius: 4px;">No: ${a.assignment_no}</span>
+                <span style="background: #ebf4ff; padding: 2px 6px; font-size: 0.8em; border-radius: 4px; color: #3182ce;">🎓 ${a.batch_name}</span>
+                <h4 style="margin:10px 0;">${a.question}</h4>
+                <p style="font-size: 0.8em; color: #718096; margin-bottom: 5px;"><strong>Subject:</strong> ${a.subject_name} <br><strong>Group:</strong> ${a.section_name}</p>
+                <p style="font-size: 0.8em; color: #718096; margin-bottom: 15px;"><strong>By:</strong> ${a.student_name || a.uploader_email.split('@')[0]}</p>
+            </div>
+            <button onclick="previewFile('${a.file_url}', '${a.file_type}', null)" class="btn-primary" style="width: 100%; margin-top: auto;">👁️ View Assignment</button>
+        </div>`).join('') || `<p>No assignments found. Be the first to upload one!</p>`;
 }
 
 // ==========================================
-// SECTION 12: ASSIGNMENT UPLOAD WIZARD
+// SECTION 18: GENERIC ASSIGNMENT UPLOAD WIZARD
 // ==========================================
 window.showAssignmentUploadForm = async function(branchId) {
     if(!currentUser) return alert("Please login to upload an assignment.");
+    
+    // Auto-generate years 1900-2100 for the Upload Dropdown
+    let yrOptions = '<option value="">Select Badge (Year)...</option>';
+    for(let y=2100; y>=1900; y--) yrOptions += `<option value="${y}">${y}</option>`;
+
     let html = `
         <button onclick="wsShowBranch('${wsBranch.id}', '${wsBranch.name}')" class="btn-action" style="margin-bottom: 1em;">⬅ Back</button>
         <h2>Upload Assignment</h2>
         <form onsubmit="submitAssignmentUpload(event, '${branchId}')" style="background: white; padding: 20px; border-radius: 8px;">
             
-            <h3 style="margin-top:0; color:#2d3748;">1. Select Badge & Folder</h3>
+            <h3 style="margin-top:0; color:#2d3748;">1. Assignment Location & Tags</h3>
             <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:25px;">
-                <select id="upWsBadge" onchange="wsLoadSems(this)" required style="width:100%; padding:10px;"><option value="">Select Badge...</option></select>
-                <select id="upWsSem" onchange="wsLoadGroups(this)" required style="width:100%; padding:10px;" disabled><option value="">Select Semester...</option></select>
-                <select id="upWsGroup" onchange="wsLoadSubs(this)" required style="width:100%; padding:10px;" disabled><option value="">Select Group...</option></select>
-                <select id="upWsSub" required style="width:100%; padding:10px;" disabled><option value="">Select Subject...</option></select>
+                <label style="font-size:0.9em; font-weight:bold;">Badge (Year): *</label>
+                <select id="upWsBadge" required style="width:100%; padding:10px; border: 2px solid #cbd5e0; border-radius: 6px;">${yrOptions}</select>
+                
+                <label style="font-size:0.9em; font-weight:bold;">Semester: *</label>
+                <input type="text" id="upWsSem" required placeholder="e.g. Semester 1" style="width:100%; padding:10px;" />
+                
+                <label style="font-size:0.9em; font-weight:bold;">Group: *</label>
+                <input type="text" id="upWsGroup" required placeholder="e.g. Group A" style="width:100%; padding:10px;" />
+                
+                <label style="font-size:0.9em; font-weight:bold;">Subject: *</label>
+                <input type="text" id="upWsSub" required placeholder="e.g. Mathematics" style="width:100%; padding:10px;" />
             </div>
             
             <h3 style="color:#2d3748;">2. Details</h3>
             <input type="text" id="upAssNo" required placeholder="Assignment Number (e.g. 1)" style="margin-bottom:12px; width:100%; padding:10px;" />
-            <textarea id="upQuestion" required placeholder="Assignment Question..." style="margin-bottom:12px; width:100%; padding:10px;"></textarea>
+            <textarea id="upQuestion" required placeholder="Assignment Question or Topic..." style="margin-bottom:12px; width:100%; padding:10px;"></textarea>
             <input type="text" id="upStudentName" placeholder="Your Name (Optional)" style="margin-bottom:12px; width:100%; padding:10px;" />
             
             <h3 style="color:#2d3748;">3. File</h3>
@@ -394,8 +387,50 @@ window.showAssignmentUploadForm = async function(branchId) {
     
     document.getElementById('workstationUpload').innerHTML = html; 
     showDashboard('workstationUpload');
+}
+
+window.submitAssignmentUpload = async function(e, branchId) {
+    e.preventDefault(); 
+    if(!currentUser) return;
     
-    const { data: batches } = await supabase.from('ws_batches').select('*').eq('branch_id', branchId);
-    const badgeSelect = document.getElementById('upWsBadge');
-    (batches || []).forEach(b => badgeSelect.innerHTML += `<option value="${b.id}|${b.name}">${b.name}</option>`);
+    // Read the text values from the generic inputs
+    const batchName = document.getElementById('upWsBadge').value;
+    const semName = document.getElementById('upWsSem').value;
+    const secName = document.getElementById('upWsGroup').value;
+    const subName = document.getElementById('upWsSub').value;
+    const assNo = document.getElementById('upAssNo').value;
+    const question = document.getElementById('upQuestion').value;
+    const studentName = document.getElementById('upStudentName').value;
+    const file = document.getElementById('upAssFile').files[0];
+
+    try {
+        const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+        const fileName = `${Date.now()}_${cleanFileName}`;
+        await supabase.storage.from('university-assignments-files').upload(fileName, file);
+        const { data: { publicUrl: fileUrl } } = supabase.storage.from('university-assignments-files').getPublicUrl(fileName);
+
+        const { error } = await supabase.from('assignments').insert([{
+            branch_id: branchId, 
+            batch_name: batchName, 
+            semester_name: semName, 
+            section_name: secName, 
+            subject_name: subName,
+            assignment_no: assNo, 
+            question: question, 
+            student_name: studentName || null, 
+            file_url: fileUrl, 
+            file_type: file.type,
+            uploaded_by: currentUser.id, 
+            uploader_email: currentUser.email
+        }]);
+        
+        if (error) throw error; 
+        
+        alert("Assignment Uploaded! 📝"); 
+        wsShowBranch(wsBranch.id, wsBranch.name);
+        
+    } catch(err) { 
+        alert("Upload failed! Check console."); 
+        console.error(err); 
+    }
 }
