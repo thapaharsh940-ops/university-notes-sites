@@ -291,32 +291,28 @@ window.createFolder = async function(table, parentId, refreshFunc) {
     const n = prompt("Enter Name/Number:"); if(!n) return;
     
     let insertData = { name: n };
+    
+    // Notes System Links (FIXED: Now includes legacy branch_id and semester_number!)
     if (table === 'batches') insertData = { branch_id: parentId, name: n };
-    if (table === 'semesters') insertData = { batch_id: parentId, name: n };
+    if (table === 'semesters') insertData = { batch_id: parentId, branch_id: currentBranch.id, semester_number: n, name: n };
     if (table === 'sections') insertData = { semester_id: parentId, name: n };
     if (table === 'subjects') insertData = { section_id: parentId, name: n };
+    
+    // Workstation System Links 
     if (table === 'ws_branches') insertData = { name: n };
+    if (table === 'ws_batches') insertData = { branch_id: parentId, name: n };
+    if (table === 'ws_semesters') insertData = { batch_id: parentId, name: n };
+    if (table === 'ws_sections') insertData = { semester_id: parentId, name: n };
+    if (table === 'ws_subjects') insertData = { section_id: parentId, name: n };
 
-    await supabase.from(table).insert([insertData]); refreshFunc();
-};
-
-window.editItem = async function(table, id, currentName, refreshFunc, event) {
-    event.stopPropagation(); 
-    const p = prompt(`Admin Code to edit:`); if (p !== ADMIN_CODE) return alert("Unauthorized.");
-    const newName = prompt(`New name:`, currentName); if (!newName || newName === currentName) return; 
-    const { error } = await supabase.from(table).update({ name: newName }).eq('id', id);
-    if (!error) { refreshFunc(); } else { alert(error.message); }
-};
-
-window.deleteItem = async function(table, id, name, refreshFunc, event) {
-    event.stopPropagation(); 
-    const p = prompt("Admin Code:"); if(p !== ADMIN_CODE) return;
-    if(confirm(`Delete "${name}"?`)) { 
-        const { error } = await supabase.from(table).delete().eq('id', id); 
-        if(error) alert(error.message); else refreshFunc(); 
+    const { error } = await supabase.from(table).insert([insertData]); 
+    if (error) {
+        alert("Error creating folder: " + error.message);
+        console.error(error);
+    } else {
+        refreshFunc();
     }
 };
-
 // ==========================================
 // SECTION 17: WORKSTATION ISOLATED DASHBOARD
 // ==========================================
