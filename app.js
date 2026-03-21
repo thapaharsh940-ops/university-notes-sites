@@ -35,8 +35,7 @@ function hideModal() {
     document.querySelectorAll('.modal-content').forEach(m => m.classList.remove('active'));
 }
 
-// NEW: Show/Hide the global loading spinner
-window.showLoading = function(message = "Uploading...") {
+window.showLoading = function(message = "Working...") {
     document.getElementById('loading-text').innerText = message;
     document.getElementById('loading-screen').classList.add('active');
 }
@@ -44,17 +43,86 @@ window.hideLoading = function() {
     document.getElementById('loading-screen').classList.remove('active');
 }
 
-function showAuthModal(tab = 'login') {
+// --- 1. LOGIN MODAL (NO SIGNUP) ---
+window.showAuthModal = function() {
     if (window.innerWidth <= 768) { sidebar.classList.remove('open'); sidebar.classList.add('closed'); }
     showModal(`
-      <div style="text-align:center">
-      <h2>${tab === 'login' ? "Login" : "Sign Up"}</h2>
-      <form onsubmit="${tab === 'login' ? 'doLogin(event)' : 'doSignup(event)'}">
-        <input id="auth-email" type="email" placeholder="Email" required><br>
-        <input id="auth-pass" type="password" placeholder="Password" required><br>
-        <button class="btn-primary" type="submit">${tab === 'login' ? "Login" : "Sign Up"}</button>
-      </form></div>`);
+      <div style="text-align:center; padding: 10px;">
+          <h2 style="color:#2d3748; margin-top:0; margin-bottom:20px;">Platform Login</h2>
+          <form onsubmit="doLogin(event)">
+              <input id="auth-email" type="email" placeholder="Email Address" required style="width:100%; padding:12px; margin-bottom:15px; border:2px solid #cbd5e0; border-radius:6px; box-sizing:border-box;">
+              
+              <div style="position: relative; width: 100%; margin-bottom:15px;">
+                  <input id="auth-pass" type="password" placeholder="Password" required style="width:100%; padding:12px; padding-right:40px; border:2px solid #cbd5e0; border-radius:6px; box-sizing:border-box; margin-bottom:0;">
+                  <button type="button" onclick="togglePassword('auth-pass', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 1.2em; padding:0;">👁️</button>
+              </div>
+              
+              <button class="btn-primary" type="submit" style="width: 100%; padding:12px; font-size:1.1em; margin-bottom: 15px;">Secure Login</button>
+          </form>
+          <div>
+              <span class="link" onclick="showForgotPassword()" style="font-size: 0.9em; color: #4299e1;">Forgot Password?</span>
+          </div>
+      </div>
+    `);
 }
+
+// --- 2. TOGGLE PASSWORD VISIBILITY ---
+window.togglePassword = function(inputId, btnElement) {
+    const passInput = document.getElementById(inputId);
+    if (passInput.type === 'password') {
+        passInput.type = 'text';
+        btnElement.innerText = '🙈'; // Hide icon
+    } else {
+        passInput.type = 'password';
+        btnElement.innerText = '👁️'; // Show icon
+    }
+}
+
+// --- 3. FORGOT PASSWORD MODAL ---
+window.showForgotPassword = function() {
+    showModal(`
+      <div style="text-align:center; padding: 10px;">
+          <h2 style="color:#2d3748; margin-top:0; margin-bottom:10px;">Reset Password</h2>
+          <p style="font-size:0.9em; color:#718096; margin-bottom:20px;">Enter your email and we'll send a secure reset link.</p>
+          <form onsubmit="doPasswordReset(event)">
+              <input id="reset-email" type="email" placeholder="Email Address" required style="width:100%; padding:12px; margin-bottom:15px; border:2px solid #cbd5e0; border-radius:6px; box-sizing:border-box;">
+              <button class="btn-primary" type="submit" style="width: 100%; padding:12px; font-size:1.1em; margin-bottom: 15px;">Send Reset Link</button>
+          </form>
+          <div>
+              <span class="link" onclick="showAuthModal()" style="font-size: 0.9em; color: #718096;">⬅ Back to Login</span>
+          </div>
+      </div>
+    `);
+}
+
+// --- 4. AUTHENTICATION LOGIC ---
+window.doLogin = async function(e) { 
+    e.preventDefault(); 
+    showLoading("Authenticating...");
+    const email = document.getElementById('auth-email').value;
+    const pass = document.getElementById('auth-pass').value;
+    const { data, error } = await supabase.auth.signInWithPassword({ email: email, password: pass }); 
+    hideLoading();
+    if (error) alert("Login failed: " + error.message); 
+    else { setUserInfo(data.user); hideModal(); showDashboard('overview'); } 
+}
+
+window.doPasswordReset = async function(e) {
+    e.preventDefault();
+    showLoading("Sending link...");
+    const email = document.getElementById('reset-email').value;
+    // Sends the reset email via Supabase
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    hideLoading();
+    if (error) {
+        alert("Error: " + error.message);
+    } else {
+        alert("✅ Password reset link sent! Please check your email inbox (and spam folder).");
+        showAuthModal(); 
+    }
+}
+
+window.logout = async function() { await supabase.auth.signOut(); setUserInfo(null); showDashboard('overview'); }
 
 function setUserInfo(user) {
     currentUser = user;
@@ -63,33 +131,45 @@ function setUserInfo(user) {
     document.querySelectorAll('.nav-item').forEach(item => {
         if (item.textContent.includes('Logout') || item.textContent.includes('Login')) {
             if (user) { item.innerHTML = '🚪 Logout'; item.onclick = logout; item.classList.add('danger'); } 
-            else { item.innerHTML = '🔑 Login'; item.onclick = () => showAuthModal('login'); item.classList.remove('danger'); }
+            else { item.innerHTML = '🔑 Login'; item.onclick = () => showAuthModal(); item.classList.remove('danger'); }
         }
     });
 }
 
-window.doSignup = async function(e) { e.preventDefault(); const { error } = await supabase.auth.signUp({ email: document.getElementById('auth-email').value, password: document.getElementById('auth-pass').value }); if (error) alert(error.message); else { alert("Check email to verify!"); hideModal(); } }
-window.doLogin = async function(e) { e.preventDefault(); const { data, error } = await supabase.auth.signInWithPassword({ email: document.getElementById('auth-email').value, password: document.getElementById('auth-pass').value }); if (error) alert(error.message); else { setUserInfo(data.user); hideModal(); showDashboard('overview'); } }
-window.logout = async function() { await supabase.auth.signOut(); setUserInfo(null); showDashboard('overview'); }
-supabase.auth.getSession().then(({ data: { session } }) => { setUserInfo(session?.user || null); showDashboard('overview'); });
+// --- 5. DETECT RESET LINK & SET NEW PASSWORD ---
+// This listens to see if the user clicked the reset link in their email
+supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+        showModal(`
+          <div style="text-align:center; padding: 10px;">
+              <h2 style="color:#2d3748; margin-top:0; margin-bottom:20px;">Set New Password</h2>
+              <form onsubmit="doUpdatePassword(event)">
+                  <div style="position: relative; width: 100%; margin-bottom:15px;">
+                      <input id="new-pass" type="password" placeholder="Enter new password" required style="width:100%; padding:12px; padding-right:40px; border:2px solid #cbd5e0; border-radius:6px; box-sizing:border-box; margin-bottom:0;">
+                      <button type="button" onclick="togglePassword('new-pass', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 1.2em; padding:0;">👁️</button>
+                  </div>
+                  <button class="btn-primary" type="submit" style="width: 100%; padding:12px; font-size:1.1em; background:#48bb78;">Save Password</button>
+              </form>
+          </div>
+        `);
+    } else {
+        setUserInfo(session?.user || null); 
+    }
+});
 
-// ==========================================
-// SECTION 4: SAFE ROUTING (NO CRASHES!)
-// ==========================================
-window.showDashboard = async function(section) {
-    document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
-    const target = document.getElementById(section);
-    if(target) target.classList.add('active');
-    
-    try {
-        if (section === 'overview') { await updateNotesStats(); loadRecentlyViewed(); }
-        if (section === 'allBranches') listBranches();
-        if (section === 'myUploads') myUploads();
-        if (section === 'searchSection') showSearchPage();
-        if (section === 'workstationHome') wsListBranches();
-    } catch(err) { console.error("Routing error:", err); }
-
-    if (window.innerWidth <= 768) { sidebar.classList.remove('open'); sidebar.classList.add('closed'); }
+window.doUpdatePassword = async function(e) {
+    e.preventDefault();
+    showLoading("Updating password...");
+    const newPass = document.getElementById('new-pass').value;
+    const { error } = await supabase.auth.updateUser({ password: newPass });
+    hideLoading();
+    if (error) {
+        alert("Error updating password: " + error.message);
+    } else {
+        alert("✅ Password updated securely! You are now logged in.");
+        hideModal();
+        showDashboard('overview');
+    }
 }
 
 // ==========================================
