@@ -43,13 +43,21 @@ window.hideLoading = function() {
     document.getElementById('loading-screen').classList.remove('active');
 }
 
-// --- 1. LOGIN MODAL (NO SIGNUP) ---
-window.showAuthModal = function() {
+// --- 1. TABBED LOGIN & SIGNUP MODAL ---
+window.showAuthModal = function(tab = 'login') {
     if (window.innerWidth <= 768) { sidebar.classList.remove('open'); sidebar.classList.add('closed'); }
+    
+    const isLogin = tab === 'login';
+    
     showModal(`
       <div style="text-align:center; padding: 10px;">
-          <h2 style="color:#2d3748; margin-top:0; margin-bottom:20px;">Platform Login</h2>
-          <form onsubmit="doLogin(event)">
+          
+          <div style="display:flex; justify-content:center; gap:20px; margin-bottom:20px;">
+              <h2 onclick="showAuthModal('login')" style="margin:0; cursor:pointer; color: ${isLogin ? '#2d3748' : '#a0aec0'}; border-bottom: ${isLogin ? '3px solid #4299e1' : 'none'}; padding-bottom:5px;">Login</h2>
+              <h2 onclick="showAuthModal('signup')" style="margin:0; cursor:pointer; color: ${!isLogin ? '#2d3748' : '#a0aec0'}; border-bottom: ${!isLogin ? '3px solid #48bb78' : 'none'}; padding-bottom:5px;">Sign Up</h2>
+          </div>
+          
+          <form onsubmit="${isLogin ? 'doLogin(event)' : 'doSignup(event)'}">
               <input id="auth-email" type="email" placeholder="Email Address" required style="width:100%; padding:12px; margin-bottom:15px; border:2px solid #cbd5e0; border-radius:6px; box-sizing:border-box;">
               
               <div style="position: relative; width: 100%; margin-bottom:15px;">
@@ -57,11 +65,10 @@ window.showAuthModal = function() {
                   <button type="button" onclick="togglePassword('auth-pass', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 1.2em; padding:0;">👁️</button>
               </div>
               
-              <button class="btn-primary" type="submit" style="width: 100%; padding:12px; font-size:1.1em; margin-bottom: 15px;">Secure Login</button>
+              <button class="btn-primary" type="submit" style="width: 100%; padding:12px; font-size:1.1em; margin-bottom: 15px; background: ${isLogin ? '#4299e1' : '#48bb78'};">${isLogin ? 'Secure Login' : 'Create Account'}</button>
           </form>
-          <div>
-              <span class="link" onclick="showForgotPassword()" style="font-size: 0.9em; color: #4299e1;">Forgot Password?</span>
-          </div>
+          
+          ${isLogin ? `<div><span class="link" onclick="showForgotPassword()" style="font-size: 0.9em; color: #4299e1;">Forgot Password?</span></div>` : ''}
       </div>
     `);
 }
@@ -71,10 +78,10 @@ window.togglePassword = function(inputId, btnElement) {
     const passInput = document.getElementById(inputId);
     if (passInput.type === 'password') {
         passInput.type = 'text';
-        btnElement.innerText = '🙈'; // Hide icon
+        btnElement.innerText = '🙈'; 
     } else {
         passInput.type = 'password';
-        btnElement.innerText = '👁️'; // Show icon
+        btnElement.innerText = '👁️'; 
     }
 }
 
@@ -88,14 +95,23 @@ window.showForgotPassword = function() {
               <input id="reset-email" type="email" placeholder="Email Address" required style="width:100%; padding:12px; margin-bottom:15px; border:2px solid #cbd5e0; border-radius:6px; box-sizing:border-box;">
               <button class="btn-primary" type="submit" style="width: 100%; padding:12px; font-size:1.1em; margin-bottom: 15px;">Send Reset Link</button>
           </form>
-          <div>
-              <span class="link" onclick="showAuthModal()" style="font-size: 0.9em; color: #718096;">⬅ Back to Login</span>
-          </div>
+          <div><span class="link" onclick="showAuthModal('login')" style="font-size: 0.9em; color: #718096;">⬅ Back to Login</span></div>
       </div>
     `);
 }
 
 // --- 4. AUTHENTICATION LOGIC ---
+window.doSignup = async function(e) { 
+    e.preventDefault(); 
+    showLoading("Creating account...");
+    const email = document.getElementById('auth-email').value;
+    const pass = document.getElementById('auth-pass').value;
+    const { error } = await supabase.auth.signUp({ email: email, password: pass }); 
+    hideLoading();
+    if (error) alert("Signup error: " + error.message); 
+    else { alert("✅ Success! Please check your email to verify your account before logging in."); hideModal(); } 
+}
+
 window.doLogin = async function(e) { 
     e.preventDefault(); 
     showLoading("Authenticating...");
@@ -111,15 +127,10 @@ window.doPasswordReset = async function(e) {
     e.preventDefault();
     showLoading("Sending link...");
     const email = document.getElementById('reset-email').value;
-    // Sends the reset email via Supabase
     const { error } = await supabase.auth.resetPasswordForEmail(email);
     hideLoading();
-    if (error) {
-        alert("Error: " + error.message);
-    } else {
-        alert("✅ Password reset link sent! Please check your email inbox (and spam folder).");
-        showAuthModal(); 
-    }
+    if (error) alert("Error: " + error.message);
+    else { alert("✅ Password reset link sent! Please check your email inbox (and spam folder)."); showAuthModal('login'); }
 }
 
 window.logout = async function() { await supabase.auth.signOut(); setUserInfo(null); showDashboard('overview'); }
@@ -131,13 +142,12 @@ function setUserInfo(user) {
     document.querySelectorAll('.nav-item').forEach(item => {
         if (item.textContent.includes('Logout') || item.textContent.includes('Login')) {
             if (user) { item.innerHTML = '🚪 Logout'; item.onclick = logout; item.classList.add('danger'); } 
-            else { item.innerHTML = '🔑 Login'; item.onclick = () => showAuthModal(); item.classList.remove('danger'); }
+            else { item.innerHTML = '🔑 Login'; item.onclick = () => showAuthModal('login'); item.classList.remove('danger'); }
         }
     });
 }
 
 // --- 5. DETECT RESET LINK & SET NEW PASSWORD ---
-// This listens to see if the user clicked the reset link in their email
 supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === 'PASSWORD_RECOVERY') {
         showModal(`
@@ -163,17 +173,31 @@ window.doUpdatePassword = async function(e) {
     const newPass = document.getElementById('new-pass').value;
     const { error } = await supabase.auth.updateUser({ password: newPass });
     hideLoading();
-    if (error) {
-        alert("Error updating password: " + error.message);
-    } else {
-        alert("✅ Password updated securely! You are now logged in.");
-        hideModal();
-        showDashboard('overview');
-    }
+    if (error) alert("Error updating password: " + error.message);
+    else { alert("✅ Password updated securely! You are now logged in."); hideModal(); showDashboard('overview'); }
 }
 
 // ==========================================
-// SECTION 5: NOTES OVERVIEW & RECENT
+// SECTION 6: SAFE ROUTING (NO CRASHES!)
+// ==========================================
+window.showDashboard = async function(section) {
+    document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
+    const target = document.getElementById(section);
+    if(target) target.classList.add('active');
+    
+    try {
+        if (section === 'overview') { await updateNotesStats(); loadRecentlyViewed(); }
+        if (section === 'allBranches') listBranches();
+        if (section === 'myUploads') myUploads();
+        if (section === 'searchSection') showSearchPage();
+        if (section === 'workstationHome') wsListBranches();
+    } catch(err) { console.error("Routing error:", err); }
+
+    if (window.innerWidth <= 768) { sidebar.classList.remove('open'); sidebar.classList.add('closed'); }
+}
+
+// ==========================================
+// SECTION 7: NOTES OVERVIEW & RECENT
 // ==========================================
 window.updateNotesStats = async function() {
     const { count: totalNotes } = await supabase.from("documents").select("*", { count: "exact", head: true });
@@ -207,7 +231,7 @@ function loadRecentlyViewed() {
 }
 
 // ==========================================
-// SECTION 6: FILE PREVIEW 
+// SECTION 8: FILE PREVIEW 
 // ==========================================
 window.previewFile = async function(url, type, docId) {
     if(docId) { const { data: doc } = await supabase.from('documents').select('*').eq('id', docId).single(); if(doc) trackRecentView(doc); }
@@ -219,7 +243,7 @@ window.previewFile = async function(url, type, docId) {
 }
 
 // ==========================================
-// SECTION 7: NOTES BROWSE & UPLOAD
+// SECTION 9: NOTES BROWSE HIERARCHY
 // ==========================================
 window.listBranches = async function() {
     const { data } = await supabase.from('branches').select('*').order('name');
@@ -272,13 +296,11 @@ window.showSubject = async function(id) {
     document.getElementById('subjectDetail').innerHTML = html; showDashboard('subjectDetail'); loadDocuments(id); 
 };
 
-// ACTIVATED: Showing the Loading Overlay during Notes Upload!
 window.uploadDocument = async function(e) {
     e.preventDefault(); if(!currentUser) return alert("Please login to upload.");
     
     try {
-        showLoading("Uploading Notes... Please wait."); // Trigger Spinner
-        
+        showLoading("Uploading Notes... Please wait."); 
         const title = document.getElementById('docTitle').value; 
         const file = document.getElementById('docFile').files[0];
         const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
@@ -290,15 +312,9 @@ window.uploadDocument = async function(e) {
             subject_id: currentSubject.id, title: title, batch_year: currentBatch.name, file_url: fileUrl, file_type: file.type, uploaded_by: currentUser.id, uploader_email: currentUser.email
         }]);
         if (error) throw error; 
-        
-        hideLoading(); // Turn off Spinner
-        alert("Uploaded!"); showSubject(currentSubject.id); 
-        
-    } catch(err) { 
         hideLoading(); 
-        alert("Upload failed!"); 
-        console.error(err); 
-    }
+        alert("Uploaded!"); showSubject(currentSubject.id); 
+    } catch(err) { hideLoading(); alert("Upload failed!"); console.error(err); }
 };
 
 window.loadDocuments = async function(subId) {
@@ -307,7 +323,7 @@ window.loadDocuments = async function(subId) {
 }
 
 // ==========================================
-// SECTION 8: NOTES SEARCH & MY UPLOADS
+// SECTION 10: NOTES SEARCH & MY UPLOADS
 // ==========================================
 window.showSearchPage = function() {
     let yrOptions = '<option value="All">Search All Badges</option>';
@@ -341,7 +357,7 @@ window.myUploads = async function() {
 }
 
 // ==========================================
-// SECTION 9: ADMIN FOLDER CREATOR TOOL
+// SECTION 11: ADMIN FOLDER CREATOR TOOL
 // ==========================================
 window.createFolder = async function(table, parentId, refreshFunc) {
     const p = prompt("Admin Code:"); if(p !== ADMIN_CODE) return;
@@ -375,7 +391,7 @@ window.deleteItem = async function(table, id, name, refreshFunc, event) {
 };
 
 // ==========================================
-// SECTION 17: WORKSTATION ISOLATED DASHBOARD
+// SECTION 12: WORKSTATION DASHBOARD
 // ==========================================
 window.wsListBranches = async function() {
     const { data } = await supabase.from('ws_branches').select('*').order('name');
@@ -459,7 +475,7 @@ function wsRenderAss(data) {
 }
 
 // ==========================================
-// SECTION 18: GENERIC ASSIGNMENT UPLOAD WIZARD
+// SECTION 13: ASSIGNMENT UPLOAD WIZARD
 // ==========================================
 window.showAssignmentUploadForm = async function(branchId) {
     if(!currentUser) return alert("Please login to upload an assignment.");
@@ -503,13 +519,12 @@ window.showAssignmentUploadForm = async function(branchId) {
     showDashboard('workstationUpload');
 }
 
-// ACTIVATED: Showing the Loading Overlay during Assignment Upload!
 window.submitAssignmentUpload = async function(e, branchId) {
     e.preventDefault(); 
     if(!currentUser) return;
 
     try {
-        showLoading("Uploading Assignment... This might take a moment."); // Trigger Spinner
+        showLoading("Uploading Assignment... This might take a moment."); 
 
         const file = document.getElementById('upAssFile').files[0];
         const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
@@ -535,12 +550,12 @@ window.submitAssignmentUpload = async function(e, branchId) {
         
         if (error) throw error; 
         
-        hideLoading(); // Turn off Spinner
+        hideLoading(); 
         alert("Assignment Uploaded! 📝"); 
         wsShowBranch(wsBranch.id, wsBranch.name);
         
     } catch(err) { 
-        hideLoading(); // Turn off Spinner on error
+        hideLoading(); 
         alert("Upload failed! Check console."); 
         console.error(err); 
     }
