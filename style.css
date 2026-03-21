@@ -80,10 +80,6 @@ header { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.07); display: flex
 /* ========================================== */
 @media (max-width: 768px) {
     .mobile-header { display: flex; }
-    
-    /* THIS IS THE FIX: Forces the menu button to show up! */
-    #mobile-menu-btn { display: block !important; } 
-    
     .sidebar { transform: translateX(-100%); }
     .sidebar.closed { transform: translateX(-100%); }
     .sidebar.open { transform: translateX(0); }
@@ -93,3 +89,19 @@ header { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.07); display: flex
     .dash-grid { flex-direction: column; display: flex; }
     .modal-content { padding: 1.5rem; width: 95%; }
 }
+
+/* ========================================== */
+/* SECTION 8: GLOBAL LOADING SPINNER          */
+/* ========================================== */
+.loading-overlay {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(17, 24, 39, 0.9); z-index: 3000;
+    justify-content: center; align-items: center; flex-direction: column; 
+    backdrop-filter: blur(5px); text-align: center;
+}
+.loading-overlay.active { display: flex; animation: fadeIn 0.3s ease; }
+.spinner {
+    width: 60px; height: 60px; border: 6px solid #374151; border-top: 6px solid #48bb78;
+    border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;
+}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
