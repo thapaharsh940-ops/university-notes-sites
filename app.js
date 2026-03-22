@@ -1,5 +1,5 @@
 // ==========================================
-// SECTION 1: GLOBAL VARIABLES & ADMIN SETUP
+// SECTION 1: GLOBAL VARIABLES & SETUP
 // ==========================================
 const ADMIN_CODE = "sahil12345"; 
 
@@ -36,14 +36,17 @@ function hideModal() {
 }
 
 window.showLoading = function(message = "Working...") {
-    document.getElementById('loading-text').innerText = message;
-    document.getElementById('loading-screen').classList.add('active');
+    const txt = document.getElementById('loading-text');
+    if(txt) txt.innerText = message;
+    const scr = document.getElementById('loading-screen');
+    if(scr) scr.classList.add('active');
 }
 window.hideLoading = function() {
-    document.getElementById('loading-screen').classList.remove('active');
+    const scr = document.getElementById('loading-screen');
+    if(scr) scr.classList.remove('active');
 }
 
-// --- LOGIN MODAL (NO SIGNUP) ---
+// LOGIN MODAL (NO SIGNUP)
 window.showAuthModal = function() {
     if (window.innerWidth <= 768) { sidebar.classList.remove('open'); sidebar.classList.add('closed'); }
     showModal(`
@@ -51,34 +54,30 @@ window.showAuthModal = function() {
           <h2 style="color:#2d3748; margin-top:0; margin-bottom:20px;">Platform Login</h2>
           <form onsubmit="doLogin(event)">
               <input id="auth-email" type="email" placeholder="Email Address" required style="width:100%; padding:12px; margin-bottom:15px; border:2px solid #cbd5e0; border-radius:6px; box-sizing:border-box;">
-              
               <div style="position: relative; width: 100%; margin-bottom:15px;">
                   <input id="auth-pass" type="password" placeholder="Password" required style="width:100%; padding:12px; padding-right:40px; border:2px solid #cbd5e0; border-radius:6px; box-sizing:border-box; margin-bottom:0;">
                   <button type="button" onclick="togglePassword('auth-pass', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 1.2em; padding:0;">👁️</button>
               </div>
-              
               <button class="btn-primary" type="submit" style="width: 100%; padding:12px; font-size:1.1em; margin-bottom: 15px;">Secure Login</button>
           </form>
-          <div>
-              <span class="link" onclick="showForgotPassword()" style="font-size: 0.9em; color: #4299e1;">Forgot Password?</span>
-          </div>
+          <div><span class="link" onclick="showForgotPassword()" style="font-size: 0.9em; color: #4299e1;">Forgot Password?</span></div>
       </div>
     `);
 }
 
-// --- TOGGLE PASSWORD VISIBILITY ---
+// TOGGLE PASSWORD VISIBILITY
 window.togglePassword = function(inputId, btnElement) {
     const passInput = document.getElementById(inputId);
     if (passInput.type === 'password') { passInput.type = 'text'; btnElement.innerText = '🙈'; } 
     else { passInput.type = 'password'; btnElement.innerText = '👁️'; }
 }
 
-// --- FORGOT PASSWORD MODAL ---
+// FORGOT PASSWORD
 window.showForgotPassword = function() {
     showModal(`
       <div style="text-align:center; padding: 10px;">
           <h2 style="color:#2d3748; margin-top:0; margin-bottom:10px;">Reset Password</h2>
-          <p style="font-size:0.9em; color:#718096; margin-bottom:20px;">Enter your email to receive a secure reset link.</p>
+          <p style="font-size:0.9em; color:#718096; margin-bottom:20px;">Enter your email and we'll send a secure reset link.</p>
           <form onsubmit="doPasswordReset(event)">
               <input id="reset-email" type="email" placeholder="Email Address" required style="width:100%; padding:12px; margin-bottom:15px; border:2px solid #cbd5e0; border-radius:6px; box-sizing:border-box;">
               <button class="btn-primary" type="submit" style="width: 100%; padding:12px; font-size:1.1em; margin-bottom: 15px;">Send Reset Link</button>
@@ -88,21 +87,26 @@ window.showForgotPassword = function() {
     `);
 }
 
-// --- AUTHENTICATION LOGIC ---
+// AUTH LOGIC
 window.doLogin = async function(e) { 
-    e.preventDefault(); showLoading("Authenticating...");
-    const email = document.getElementById('auth-email').value; const pass = document.getElementById('auth-pass').value;
+    e.preventDefault(); 
+    showLoading("Authenticating...");
+    const email = document.getElementById('auth-email').value;
+    const pass = document.getElementById('auth-pass').value;
     const { data, error } = await supabase.auth.signInWithPassword({ email: email, password: pass }); 
     hideLoading();
-    if (error) alert("Login failed: " + error.message); else { setUserInfo(data.user); hideModal(); showDashboard('overview'); } 
+    if (error) alert("Login failed: " + error.message); 
+    else { setUserInfo(data.user); hideModal(); showDashboard('overview'); } 
 }
 
 window.doPasswordReset = async function(e) {
-    e.preventDefault(); showLoading("Sending link...");
+    e.preventDefault();
+    showLoading("Sending link...");
     const email = document.getElementById('reset-email').value;
     const { error } = await supabase.auth.resetPasswordForEmail(email);
     hideLoading();
-    if (error) alert("Error: " + error.message); else { alert("✅ Password reset link sent!"); showAuthModal(); }
+    if (error) alert("Error: " + error.message);
+    else { alert("✅ Password reset link sent! Check your inbox/spam."); showAuthModal(); }
 }
 
 window.logout = async function() { await supabase.auth.signOut(); setUserInfo(null); showDashboard('overview'); }
@@ -119,7 +123,7 @@ function setUserInfo(user) {
     });
 }
 
-// --- DETECT RESET LINK ---
+// DETECT RESET LINK
 supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === 'PASSWORD_RECOVERY') {
         showModal(`
@@ -140,30 +144,22 @@ supabase.auth.onAuthStateChange(async (event, session) => {
 });
 
 window.doUpdatePassword = async function(e) {
-    e.preventDefault(); showLoading("Updating password...");
+    e.preventDefault();
+    showLoading("Updating password...");
     const newPass = document.getElementById('new-pass').value;
     const { error } = await supabase.auth.updateUser({ password: newPass });
     hideLoading();
-    if (error) alert("Error: " + error.message); else { alert("✅ Password updated securely!"); hideModal(); showDashboard('overview'); }
+    if (error) alert("Error: " + error.message);
+    else { alert("✅ Password updated securely!"); hideModal(); showDashboard('overview'); }
 }
-// 1. Force the dashboard to show up instantly so you NEVER get a white screen
-showDashboard('overview');
 
-// 2. Try to connect to the database in the background
-supabase.auth.getSession()
-    .then(({ data: { session } }) => { 
-        setUserInfo(session?.user || null); 
-    })
-    .catch(err => {
-        console.error("Network Blocked:", err);
-        document.getElementById('overview').innerHTML = `
-            <div style="text-align:center; padding:50px; background:white; border-radius:8px;">
-                <h2 style="color:red;">🚨 Network Connection Blocked</h2>
-                <p>Your mobile data provider is blocking the connection to the database. Please connect to a Wi-Fi network to use the platform.</p>
-            </div>`;
-    });
+supabase.auth.getSession().then(({ data: { session } }) => {
+    setUserInfo(session?.user || null);
+    showDashboard('overview');
+});
+
 // ==========================================
-// SECTION 4: SAFE ROUTING
+// SECTION 4: ROUTING (THE FIX FOR YOUR ERROR)
 // ==========================================
 window.showDashboard = async function(section) {
     document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
@@ -185,28 +181,20 @@ window.showDashboard = async function(section) {
 // SECTION 5: NOTES OVERVIEW & RECENT
 // ==========================================
 window.updateNotesStats = async function() {
-    try {
-        const { count: totalNotes } = await supabase.from("documents").select("*", { count: "exact", head: true });
-        const { count: totalAssignments } = await supabase.from("assignments").select("*", { count: "exact", head: true });
-        
-        document.getElementById('overview').innerHTML = `
-            <h2 style="margin-bottom: 25px; color: #2d3748;">Platform Overview</h2>
-            <div class="dash-grid">
-                <div class="dash-card-premium bg-purple"><h3>📚 Total Notes</h3><div class="number">${totalNotes || 0}</div></div>
-                <div class="dash-card-premium bg-green"><h3>💻 Total Assignments</h3><div class="number">${totalAssignments || 0}</div></div>
-            </div>
-            <div id="recent-views-container" style="margin-top: 30px; display: none;">
-                <h3 style="color: #2d3748;">🕒 Recently Viewed</h3><div id="recentViews" style="display: flex; flex-direction: column; gap: 10px;"></div>
-            </div>`;
-    } catch(err) {
-        document.getElementById('overview').innerHTML = `
-            <div style="text-align: center; padding: 50px;">
-                <h2 style="color: red;">🚨 Connection Error</h2>
-                <p style="color: gray;">Your mobile network may be blocking the database connection.</p>
-                <p><strong>Error:</strong> ${err.message}</p>
-            </div>`;
-    }
+    const { count: totalNotes } = await supabase.from("documents").select("*", { count: "exact", head: true });
+    const { count: totalAssignments } = await supabase.from("assignments").select("*", { count: "exact", head: true });
+    
+    document.getElementById('overview').innerHTML = `
+        <h2 style="margin-bottom: 25px; color: #2d3748;">Platform Overview</h2>
+        <div class="dash-grid">
+            <div class="dash-card-premium bg-purple"><h3>📚 Total Notes</h3><div class="number">${totalNotes || 0}</div></div>
+            <div class="dash-card-premium bg-green"><h3>💻 Total Assignments</h3><div class="number">${totalAssignments || 0}</div></div>
+        </div>
+        <div id="recent-views-container" style="margin-top: 30px; display: none;">
+            <h3 style="color: #2d3748;">🕒 Recently Viewed</h3><div id="recentViews" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        </div>`;
 }
+
 function trackRecentView(doc) {
     let recent = JSON.parse(localStorage.getItem('recentViews') || '[]');
     recent = recent.filter(d => d.id !== doc.id); 
@@ -292,15 +280,17 @@ window.showSubject = async function(id) {
 window.uploadDocument = async function(e) {
     e.preventDefault(); if(!currentUser) return alert("Please login to upload.");
     try {
-        showLoading("Uploading Notes... Please wait."); 
-        const title = document.getElementById('docTitle').value; const file = document.getElementById('docFile').files[0];
+        showLoading("Uploading Notes... Please wait.");
+        const title = document.getElementById('docTitle').value; 
+        const file = document.getElementById('docFile').files[0];
         const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
         await supabase.storage.from('university-notes-files').upload(fileName, file);
         const { data: { publicUrl: fileUrl } } = supabase.storage.from('university-notes-files').getPublicUrl(fileName);
         const { error } = await supabase.from('documents').insert([{
             subject_id: currentSubject.id, title: title, batch_year: currentBatch.name, file_url: fileUrl, file_type: file.type, uploaded_by: currentUser.id, uploader_email: currentUser.email
         }]);
-        if (error) throw error; hideLoading(); alert("Uploaded!"); showSubject(currentSubject.id); 
+        if (error) throw error; 
+        hideLoading(); alert("Uploaded!"); showSubject(currentSubject.id); 
     } catch(err) { hideLoading(); alert("Upload failed!"); console.error(err); }
 };
 
@@ -325,15 +315,11 @@ window.showSearchPage = function() {
     `;
 }
 window.performNotesSearch = async function() {
-    const badge = document.getElementById('searchBadge').value;
-    const query = document.getElementById('searchInput').value;
+    const badge = document.getElementById('searchBadge').value; const query = document.getElementById('searchInput').value;
     if (query.length < 2) return;
-    
     let dbQuery = supabase.from('documents').select('*').ilike('title', `%${query}%`).order('created_at', { ascending: false });
     if (badge && badge !== "All") dbQuery = dbQuery.eq('batch_year', badge);
-    
-    const { data, error } = await dbQuery;
-    if (error) return console.error(error);
+    const { data } = await dbQuery;
     document.getElementById('searchResults').innerHTML = (data || []).map(d => `<div class="branch-card" style="width:250px;" onclick="previewFile('${d.file_url}', '${d.file_type}', '${d.id}')"><h4>${d.title}</h4><p style="font-size:0.8em; color:gray;">🎓 ${d.batch_year || 'Unknown'}</p></div>`).join('') || '<p>No results found.</p>';
 };
 
@@ -344,7 +330,7 @@ window.myUploads = async function() {
 }
 
 // ==========================================
-// SECTION 9: ADMIN FOLDER CREATOR TOOL
+// SECTION 9: ADMIN FOLDER TOOL
 // ==========================================
 window.createFolder = async function(table, parentId, refreshFunc) {
     const p = prompt("Admin Code:"); if(p !== ADMIN_CODE) return;
@@ -378,36 +364,27 @@ window.deleteItem = async function(table, id, name, refreshFunc, event) {
 };
 
 // ==========================================
-// SECTION 17: WORKSTATION DASHBOARD & SEARCH
+// SECTION 17: WORKSTATION ISOLATED DASHBOARD
 // ==========================================
 window.wsListBranches = async function() {
     const { data } = await supabase.from('ws_branches').select('*').order('name');
     let html = `<h2>Workstation (Select Branch)</h2>`;
     html += `<button onclick="createFolder('ws_branches', null, wsListBranches)" class="btn-primary" style="background:#28a745;">+ Add WS Branch (Admin)</button>`;
-    html += (data || []).map(b => `
-        <div class="branch-card" onclick="wsShowBranch('${b.id}', '${b.name}')" style="display:flex; justify-content:space-between; align-items:center;">
-            <h3>💻 ${b.name}</h3>
-            <div style="display:flex; gap:5px;">
-                <button onclick="editItem('ws_branches', '${b.id}', '${b.name}', wsListBranches, event)" class="btn-action" style="color:#3182ce; border-color:#3182ce; padding:5px 10px;">✏️</button>
-                <button onclick="deleteItem('ws_branches', '${b.id}', '${b.name}', wsListBranches, event)" class="btn-delete" style="padding:5px 10px;">🗑️</button>
-            </div>
-        </div>`).join('') || '<p>No branches.</p>';
+    html += (data || []).map(b => `<div class="branch-card" onclick="wsShowBranch('${b.id}', '${b.name}')" style="display:flex; justify-content:space-between; align-items:center;"><h3>💻 ${b.name}</h3><div style="display:flex; gap:5px;"><button onclick="editItem('ws_branches', '${b.id}', '${b.name}', wsListBranches, event)" class="btn-action" style="color:#3182ce; border-color:#3182ce; padding:5px 10px;">✏️</button><button onclick="deleteItem('ws_branches', '${b.id}', '${b.name}', wsListBranches, event)" class="btn-delete" style="padding:5px 10px;">🗑️</button></div></div>`).join('') || '<p>No branches.</p>';
     document.getElementById('workstationHome').innerHTML = html;
 }
 
 window.wsShowBranch = async function(id, name) {
     wsBranch = {id: id, name: name};
-    
     let yrOptions = '<option value="">All Badges (Years)</option>';
     for(let y=2100; y>=1900; y--) yrOptions += `<option value="${y}">${y}</option>`;
 
     let html = `
-        <button onclick="showDashboard('workstationHome')" class="btn-action" style="margin-bottom: 1em;">⬅ Back to Branches</button>
+        <button onclick="showDashboard('workstationHome')" class="btn-action" style="margin-bottom: 1em;">⬅ Back</button>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
             <h2 style="margin:0;">📝 ${name} Assignments</h2>
             <button onclick="showAssignmentUploadForm('${id}')" class="btn-primary" style="background:#48bb78; margin:0;">+ Upload</button>
         </div>
-
         <div class="search-grid">
             <div class="search-box-card">
                 <h3>🔍 Specific Search</h3>
@@ -425,9 +402,7 @@ window.wsShowBranch = async function(id, name) {
         </div>
         <div id="wsResultsList" style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 1em; margin-bottom: 2em;"></div>
     `;
-    document.getElementById('wsBranchDetail').innerHTML = html; 
-    showDashboard('wsBranchDetail');
-    wsSearchSpecific(id);
+    document.getElementById('wsBranchDetail').innerHTML = html; showDashboard('wsBranchDetail'); wsSearchSpecific(id);
 };
 
 window.wsSearchSpecific = async function(branchId) {
@@ -465,11 +440,11 @@ function wsRenderAss(data) {
                <button onclick="previewFile('${a.file_url}', '${a.file_type}', null)" class="btn-primary" style="flex:1;">👁️ View</button>
                <button onclick="deleteItem('assignments', '${a.id}', 'this assignment', () => wsSearchSpecific('${a.branch_id}'), event)" class="btn-action" style="color:#e53e3e; border:none;">🗑️</button>
             </div>
-        </div>`).join('') || `<p>No assignments found.</p>`;
+        </div>`).join('') || `<p>No assignments found. Be the first to upload one!</p>`;
 }
 
 // ==========================================
-// SECTION 18: ASSIGNMENT UPLOAD WIZARD
+// SECTION 18: GENERIC ASSIGNMENT UPLOAD 
 // ==========================================
 window.showAssignmentUploadForm = async function(branchId) {
     if(!currentUser) return alert("Please login to upload an assignment.");
@@ -481,76 +456,39 @@ window.showAssignmentUploadForm = async function(branchId) {
         <button onclick="wsShowBranch('${wsBranch.id}', '${wsBranch.name}')" class="btn-action" style="margin-bottom: 1em;">⬅ Back</button>
         <h2>Upload Assignment</h2>
         <form onsubmit="submitAssignmentUpload(event, '${branchId}')" style="background: white; padding: 20px; border-radius: 8px;">
-            
-            <h3 style="margin-top:0; color:#2d3748;">1. Assignment Location</h3>
+            <h3 style="margin-top:0; color:#2d3748;">1. Location & Tags</h3>
             <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:25px;">
-                <label style="font-size:0.9em; font-weight:bold;">Badge (Year): *</label>
                 <select id="upWsBadge" required style="width:100%; padding:10px; border: 2px solid #cbd5e0; border-radius: 6px;">${yrOptions}</select>
-                
-                <label style="font-size:0.9em; font-weight:bold;">Semester: *</label>
-                <input type="text" id="upWsSem" required placeholder="e.g. Semester 1" style="width:100%; padding:10px;" />
-                
-                <label style="font-size:0.9em; font-weight:bold;">Group: *</label>
-                <input type="text" id="upWsGroup" required placeholder="e.g. Group A" style="width:100%; padding:10px;" />
-                
-                <label style="font-size:0.9em; font-weight:bold;">Subject: *</label>
-                <input type="text" id="upWsSub" required placeholder="e.g. Mathematics" style="width:100%; padding:10px;" />
+                <input type="text" id="upWsSem" required placeholder="Semester (e.g. Semester 1)" style="width:100%; padding:10px;" />
+                <input type="text" id="upWsGroup" required placeholder="Group (e.g. Group A)" style="width:100%; padding:10px;" />
+                <input type="text" id="upWsSub" required placeholder="Subject (e.g. Mathematics)" style="width:100%; padding:10px;" />
             </div>
-            
             <h3 style="color:#2d3748;">2. Details</h3>
             <input type="text" id="upAssNo" required placeholder="Assignment Number (e.g. 1)" style="margin-bottom:12px; width:100%; padding:10px;" />
             <textarea id="upQuestion" required placeholder="Assignment Question or Topic..." style="margin-bottom:12px; width:100%; padding:10px;"></textarea>
             <input type="text" id="upStudentName" placeholder="Your Name (Optional)" style="margin-bottom:12px; width:100%; padding:10px;" />
-            
             <h3 style="color:#2d3748;">3. File</h3>
             <input type="file" id="upAssFile" required style="margin-bottom:15px; width:100%;" />
-            
             <button class="btn-primary" type="submit" style="width: 100%; background:#48bb78; padding:15px; font-size:1.1em;">Upload Assignment</button>
         </form>
     `;
-    
-    document.getElementById('workstationUpload').innerHTML = html; 
-    showDashboard('workstationUpload');
+    document.getElementById('workstationUpload').innerHTML = html; showDashboard('workstationUpload');
 }
 
 window.submitAssignmentUpload = async function(e, branchId) {
-    e.preventDefault(); 
-    if(!currentUser) return;
+    e.preventDefault(); if(!currentUser) return;
 
     try {
-        showLoading("Uploading Assignment... This might take a moment."); 
-
+        showLoading("Uploading Assignment... This might take a moment.");
         const file = document.getElementById('upAssFile').files[0];
-        const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-        const fileName = `${Date.now()}_${cleanFileName}`;
-        
+        const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
         await supabase.storage.from('university-assignments-files').upload(fileName, file);
         const { data: { publicUrl: fileUrl } } = supabase.storage.from('university-assignments-files').getPublicUrl(fileName);
 
         const { error } = await supabase.from('assignments').insert([{
-            branch_id: branchId, 
-            batch_name: document.getElementById('upWsBadge').value, 
-            semester_name: document.getElementById('upWsSem').value, 
-            section_name: document.getElementById('upWsGroup').value, 
-            subject_name: document.getElementById('upWsSub').value,
-            assignment_no: document.getElementById('upAssNo').value, 
-            question: document.getElementById('upQuestion').value, 
-            student_name: document.getElementById('upStudentName').value || null, 
-            file_url: fileUrl, 
-            file_type: file.type,
-            uploaded_by: currentUser.id, 
-            uploader_email: currentUser.email
+            branch_id: branchId, batch_name: document.getElementById('upWsBadge').value, semester_name: document.getElementById('upWsSem').value, section_name: document.getElementById('upWsGroup').value, subject_name: document.getElementById('upWsSub').value, assignment_no: document.getElementById('upAssNo').value, question: document.getElementById('upQuestion').value, student_name: document.getElementById('upStudentName').value || null, file_url: fileUrl, file_type: file.type, uploaded_by: currentUser.id, uploader_email: currentUser.email
         }]);
-        
         if (error) throw error; 
-        
-        hideLoading(); 
-        alert("Assignment Uploaded! 📝"); 
-        wsShowBranch(wsBranch.id, wsBranch.name);
-        
-    } catch(err) { 
-        hideLoading(); 
-        alert("Upload failed! Check console."); 
-        console.error(err); 
-    }
+        hideLoading(); alert("Assignment Uploaded! 📝"); wsShowBranch(wsBranch.id, wsBranch.name);
+    } catch(err) { hideLoading(); alert("Upload failed! Check console."); console.error(err); }
 }
