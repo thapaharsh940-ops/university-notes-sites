@@ -88,6 +88,9 @@ header { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.07); display: flex
     .branch-card { width: 100% !important; margin-bottom: 15px; }
     .dash-grid { flex-direction: column; display: flex; }
     .modal-content { padding: 1.5rem; width: 95%; }
+    
+    /* Forces the button to show up on mobile! */
+    #mobile-menu-btn { display: block !important; }
 }
 
 /* ========================================== */
