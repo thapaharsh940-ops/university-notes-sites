@@ -146,7 +146,22 @@ window.doUpdatePassword = async function(e) {
     hideLoading();
     if (error) alert("Error: " + error.message); else { alert("✅ Password updated securely!"); hideModal(); showDashboard('overview'); }
 }
+// 1. Force the dashboard to show up instantly so you NEVER get a white screen
+showDashboard('overview');
 
+// 2. Try to connect to the database in the background
+supabase.auth.getSession()
+    .then(({ data: { session } }) => { 
+        setUserInfo(session?.user || null); 
+    })
+    .catch(err => {
+        console.error("Network Blocked:", err);
+        document.getElementById('overview').innerHTML = `
+            <div style="text-align:center; padding:50px; background:white; border-radius:8px;">
+                <h2 style="color:red;">🚨 Network Connection Blocked</h2>
+                <p>Your mobile data provider is blocking the connection to the database. Please connect to a Wi-Fi network to use the platform.</p>
+            </div>`;
+    });
 // ==========================================
 // SECTION 4: SAFE ROUTING
 // ==========================================
