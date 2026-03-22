@@ -170,20 +170,28 @@ window.showDashboard = async function(section) {
 // SECTION 5: NOTES OVERVIEW & RECENT
 // ==========================================
 window.updateNotesStats = async function() {
-    const { count: totalNotes } = await supabase.from("documents").select("*", { count: "exact", head: true });
-    const { count: totalAssignments } = await supabase.from("assignments").select("*", { count: "exact", head: true });
-    
-    document.getElementById('overview').innerHTML = `
-        <h2 style="margin-bottom: 25px; color: #2d3748;">Platform Overview</h2>
-        <div class="dash-grid">
-            <div class="dash-card-premium bg-purple"><h3>📚 Total Notes</h3><div class="number">${totalNotes || 0}</div></div>
-            <div class="dash-card-premium bg-green"><h3>💻 Total Assignments</h3><div class="number">${totalAssignments || 0}</div></div>
-        </div>
-        <div id="recent-views-container" style="margin-top: 30px; display: none;">
-            <h3 style="color: #2d3748;">🕒 Recently Viewed</h3><div id="recentViews" style="display: flex; flex-direction: column; gap: 10px;"></div>
-        </div>`;
+    try {
+        const { count: totalNotes } = await supabase.from("documents").select("*", { count: "exact", head: true });
+        const { count: totalAssignments } = await supabase.from("assignments").select("*", { count: "exact", head: true });
+        
+        document.getElementById('overview').innerHTML = `
+            <h2 style="margin-bottom: 25px; color: #2d3748;">Platform Overview</h2>
+            <div class="dash-grid">
+                <div class="dash-card-premium bg-purple"><h3>📚 Total Notes</h3><div class="number">${totalNotes || 0}</div></div>
+                <div class="dash-card-premium bg-green"><h3>💻 Total Assignments</h3><div class="number">${totalAssignments || 0}</div></div>
+            </div>
+            <div id="recent-views-container" style="margin-top: 30px; display: none;">
+                <h3 style="color: #2d3748;">🕒 Recently Viewed</h3><div id="recentViews" style="display: flex; flex-direction: column; gap: 10px;"></div>
+            </div>`;
+    } catch(err) {
+        document.getElementById('overview').innerHTML = `
+            <div style="text-align: center; padding: 50px;">
+                <h2 style="color: red;">🚨 Connection Error</h2>
+                <p style="color: gray;">Your mobile network may be blocking the database connection.</p>
+                <p><strong>Error:</strong> ${err.message}</p>
+            </div>`;
+    }
 }
-
 function trackRecentView(doc) {
     let recent = JSON.parse(localStorage.getItem('recentViews') || '[]');
     recent = recent.filter(d => d.id !== doc.id); 
