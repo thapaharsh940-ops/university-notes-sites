@@ -58,7 +58,7 @@ window.showAuthModal = function(tab = 'login') {
               <input id="auth-email" type="email" placeholder="Email Address" required style="width:100%; padding:12px; margin-bottom:15px; border:2px solid #cbd5e0; border-radius:6px; box-sizing:border-box;">
               
               <div style="position: relative; width: 100%; margin-bottom:15px;">
-                  <input id="auth-pass" type="password" placeholder="Password (6-20 characters)" required minlength="8" maxlength="20" style="width:100%; padding:12px; padding-right:40px; border:2px solid #cbd5e0; border-radius:6px; box-sizing:border-box; margin-bottom:0;">
+                  <input id="auth-pass" type="password" placeholder="Password (8-20 characters)" required minlength="8" maxlength="20" style="width:100%; padding:12px; padding-right:40px; border:2px solid #cbd5e0; border-radius:6px; box-sizing:border-box; margin-bottom:0;">
                   <button type="button" onclick="togglePassword('auth-pass', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 1.2em; padding:0;">👁️</button>
               </div>
               
@@ -192,6 +192,7 @@ supabase.auth.getSession().then(({ data: { session } }) => {
     setUserInfo(session?.user || null);
     showDashboard('overview');
 });
+
 // ==========================================
 // SECTION 4: ROUTING (THE FIX FOR YOUR ERROR)
 // ==========================================
@@ -398,7 +399,7 @@ window.deleteItem = async function(table, id, name, refreshFunc, event) {
 };
 
 // ==========================================
-// SECTION 17: WORKSTATION ISOLATED DASHBOARD
+// SECTION 17: WORKSTATION DASHBOARD
 // ==========================================
 window.wsListBranches = async function() {
     const { data } = await supabase.from('ws_branches').select('*').order('name');
